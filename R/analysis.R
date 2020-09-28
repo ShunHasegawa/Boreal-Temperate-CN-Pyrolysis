@@ -2,10 +2,33 @@ source("R/packages.R")
 source("R/functions.R")
 source("R/generic_functions.R")
 
+
+
+# Area size of raw spectrum for NIST --------------------------------------
+
+humus_spec_area_raw <- llply(list('Aheden'      = "Data/Spectra_Humus_Aheden.csv", 
+                                  'Svartberget' = "Data/Spectra_Humus_Svartberget.csv",
+                                  'Flakaliden'  = "Data/Spectra_Humus_Flakaliden.csv"),
+                             function(x){
+                               d <- read.csv(x) %>% 
+                                 transmute(Window, tot_area = rowSums(select(., starts_with("X")))) %>% 
+                                 filter(Window != "Win001_C01") %>%  # remove CO2
+                                 mutate(Ave_Area_Prop = tot_area * 100 / sum(tot_area))
+                               return(d)
+                             })
+l_ply(names(humus_spec_area_raw),
+      function(x) write.csv(humus_spec_area_raw[[x]], 
+                            paste0("Output/Data/", x, "_Spectrum_area_humus.csv"),
+                            row.names = FALSE))
+
+
+
+# Load data ---------------------------------------------------------------
 sitecols <- brewer.pal(4, "Dark2")
+
 load("Data/IRMS.RData")
 irms_full <- irms_full %>% 
-  mutate_at(.vars = c("Layer", "Sample_ID"), .funs = funs(as.character))
+  mutate_if(is.factor, as.character)
 fileid_d <- read.csv("Data/Pyrolysis_sample_list.csv", sep = ";") %>% 
   mutate_all(.funs = funs(as.character)) %>% 
   select(Layer, fileid, Sample_ID) 
@@ -15,6 +38,9 @@ trt_litter <- trt_dd %>%
   filter(Layer == "Litter")
 trt_humus <- trt_dd %>% 
   filter(Layer == "Humus")
+
+
+# Litter analysis ---------------------------------------------------------
 
 # Rosinedal 2018
 load("Data/Pyrolysis_Rosinedal_Oct2018_litter_spectrum_prop.RData")
@@ -96,28 +122,27 @@ spect_litter_prop <- spect_litter %>%
 
 
 # RDA ---------------------------------------------------------------------
-litter_sp <- decostand(select(spect_litter_prop, aromatic:s_lignin), method = "hellinger")
-litter_rda <- rda(litter_sp ~ treatment * Site + Condition(Site), spect_litter_prop)
+litter_pyr_sp <- decostand(select(spect_litter_prop, aromatic:s_lignin), method = "hellinger")
+litter_pyr_rda <- rda(litter_pyr_sp ~ treatment * Site + Condition(Site), spect_litter_prop)
 
-anova(litter_rda, strata = spect_litter_prop$Site)
-summary(litter_rda)
-plot(litter_rda)
-ordispider(litter_rda, interaction(spect_litter_prop$Site, spect_litter_prop$treatment), label = TRUE, 
+anova(litter_pyr_rda, strata = spect_litter_prop$Site)
+summary(litter_pyr_rda)
+plot(litter_pyr_rda)
+ordispider(litter_pyr_rda, interaction(spect_litter_prop$Site, spect_litter_prop$treatment), label = TRUE, 
            cex = .4, col = rep(palette()[1:5], 2))
 
-litter_rda_df <- data.frame(scores(litter_rda)$sites) %>% 
+litter_rda_pyr_df <- data.frame(scores(litter_pyr_rda)$sites) %>% 
   bind_cols(spect_litter_prop) 
-litter_rda_pyr_site_p <- ggplot(litter_rda_df, aes(x = Trt, y = -RDA1))+
+litter_rda_pyr_site_p <- ggplot(litter_rda_pyr_df, aes(x = Trt, y = -RDA1))+
   geom_hline(yintercept = 0, linetype = "dotted") +
   geom_boxplot(aes(col = Site), outlier.colour = "white")+
   geom_jitter(aes(col = Site), width = .1, alpha = .7)+
   scale_color_manual(values = sitecols)+
   facet_grid(. ~ Site, scales = "free_x", space = "free_x")+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "none")+
   lims(y = c(-.9, 1.5)) +
-  labs(x = NULL, y = get_PCA_axislab(litter_rda))
-
+  labs(x = NULL, y = get_PCA_axislab(litter_rda))+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
 
 # Sp score
 pyr_litter_rda_sp   <- data.frame(scores(litter_rda)$species) %>% 
@@ -143,9 +168,7 @@ litter_rda_pyrsp_p <- ggplot(pyr_litter_rda_sp, aes(x = -1, y = -RDA1*5, label =
 litter_rda_pyrsp_p
 
 litter_rda_pyr_p <- ggarrange(litter_rda_pyr_site_p, litter_rda_pyrsp_p, ncol = 2, widths = c(2, .9))
+litter_rda_pyr_p
 
-
-
-
-
-
+save(litter_rda_pyr_df, pyr_litter_rda_sp, litter_pyr_sp, litter_pyr_rda,
+     file = "Output/Data/Pyr_RDA.RDA")
