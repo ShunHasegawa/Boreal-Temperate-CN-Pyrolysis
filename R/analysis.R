@@ -10,11 +10,17 @@ humus_spec_area_raw <- llply(list('Aheden'      = "Data/Spectra_Humus_Aheden.csv
                                   'Svartberget' = "Data/Spectra_Humus_Svartberget.csv",
                                   'Flakaliden'  = "Data/Spectra_Humus_Flakaliden.csv"),
                              function(x){
-                               d <- read.csv(x) %>% 
-                                 transmute(Window, tot_area = rowSums(select(., starts_with("X")))) %>% 
+                               d0 <- read.csv(x) 
+                               d1 <- d0 %>% 
+                                 filter(Window == "Win001_C01") %>% 
+                                 mutate(Ave_Area_Prop = 0) %>% 
+                                 select(Window, RT_s, Ave_Area_Prop)
+                               d2 <- d0 %>% 
+                                 transmute(Window, RT_s, tot_area = rowSums(select(., starts_with("X")))) %>% 
                                  filter(Window != "Win001_C01") %>%  # remove CO2
-                                 mutate(Ave_Area_Prop = tot_area * 100 / sum(tot_area))
-                               return(d)
+                                 mutate(Ave_Area_Prop = tot_area * 100 / sum(tot_area)) %>% 
+                                 select(Window, RT_s, Ave_Area_Prop)
+                               return(rbind(d1, d2))
                              })
 l_ply(names(humus_spec_area_raw),
       function(x) write.csv(humus_spec_area_raw[[x]], 
