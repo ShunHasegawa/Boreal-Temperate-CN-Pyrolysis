@@ -7,17 +7,6 @@ source("R/packages.R")
 
 comp_fls <- dir("Data/NIST_compound_comparison/")
 
-
-site <- strsplit(comp_fls[1], "_|[.]")[[1]][3]
-type <- strsplit(comp_fls[1], "_|[.]")[[1]][2]
-
-d1 <- read.csv(paste0("Data/NIST_compound_comparison/", comp_fls[1])) %>% 
-  select(Window, RT_s, Comp)
-colnames(d1) <- c(paste("Window", site, type, sep = "_"),
-                  "RT_s",
-                  paste("Comp", site, type, sep = "_"))
-
-
 all_comps <- llply(comp_fls, function(x){
   site <- strsplit(x, "_|[.]")[[1]][3]
   type <- strsplit(x, "_|[.]")[[1]][2]
@@ -29,7 +18,7 @@ all_comps <- llply(comp_fls, function(x){
   colnames(d) <- c(paste(type, site, "Window", sep = "_"),
                     "RT_s",
                     paste(type, site, "Comp", sep = "_"),
-                   rep)
+                   "rep")
   return(d)
   
 })
@@ -43,7 +32,7 @@ merged_comp <- Reduce(function(...) merge(..., all = TRUE), all_comps) %>%
 sapply(all_comps, nrow)
 merged_comp %>% 
   select(contains("Window")) %>% 
-  apply(., 2, function(x) sum(!is.na(x)))
+  apply(., 2, function(x) sum(x != ""))
 
 # save
 write.csv(merged_comp, "Output/Tables/Compare_NIST_addigned_compds.csv", row.names = FALSE)
