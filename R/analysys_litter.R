@@ -148,6 +148,8 @@ ggplot(litter_rda_pyr_df_std, aes(x = Total_N, y = RDA1_std_M))+
 # NMDS --------------------------------------------------------------------
 
 litter_pyr_nmds <- metaMDS(litter_pyr_sp, distance = "bray")
+
+pdf(file = "Output/Figs/d13C_analysis/Pyrolysis_NMDS_Lhoriz.pdf", width = 6, height = 6)
 plot(litter_pyr_nmds, main = "Pyrolysis L horizon")
 abline(v = 0, h = 0, col = "gray40", lty = 2)
 ordispider(litter_pyr_nmds, paste(spect_litter_prop$Site, spect_litter_prop$Trt, sep = ":"),
@@ -156,7 +158,7 @@ ordispider(litter_pyr_nmds, paste(spect_litter_prop$Site, spect_litter_prop$Trt,
                              rep(palette()[3], 3), rep(palette()[4], 2)))
 plot(envfit(litter_pyr_nmds ~ CN + d13C + wN + wC, spect_litter_prop), col = "purple")
 text(litter_pyr_nmds, display = "species", col = "brown")
-
+dev.off()
 
 
 
@@ -164,24 +166,30 @@ text(litter_pyr_nmds, display = "species", col = "brown")
 
 litter_pyr_rda_13c <- rda(litter_pyr_sp ~ d13C + wN + Condition(Site), spect_litter_prop)
 anova(litter_pyr_rda_13c, by = "margin")
-plot(litter_pyr_rda_13c, scaling = 3)
-text(litter_pyr_rda_13c, display = "species", col = "brown", scaling = 3)
 
+pdf(file = "Output/Figs/d13C_analysis/Pyrolysis_RDA_Lhoriz_d13C_wN.pdf", width = 6, height = 6)
+plot(litter_pyr_rda_13c, scaling = 3, main = "Pyrolysis (L horizon) RDA vs. d13C, wN")
+text(litter_pyr_rda_13c, display = "species", col = "brown", scaling = 3)
+dev.off()
 
 # Picea abies
 litter_PA <- filter(spect_litter_prop, Vegetation == "Picea abies")
 litter_PA_sp <-decostand(select(litter_PA, aromatic:s_lignin), method = "hellinger")
-litter_pyr_rda_13c_pa <- rda(litter_PA_sp ~ d13C + Condition(Site), litter_PA)
+litter_pyr_rda_13c_pa <- rda(litter_PA_sp ~ d13C + wN + Condition(Site), litter_PA)
 anova(litter_pyr_rda_13c_pa)
 anova(litter_pyr_rda_13c_pa, by = "axis")
-plot(litter_pyr_rda_13c_pa)
 
+pdf(file = "Output/Figs/d13C_analysis/Pyrolysis_RDA_Lhoriz_Pabies_d13C_wN.pdf", width = 6, height = 6)
+plot(litter_pyr_rda_13c_pa, scaling = 3, main = "Pyrolysis (L horizon, Picea abies) RDA vs. d13C, wN")
+dev.off()
 
 # Pynus sylvestris
 litter_PS <- filter(spect_litter_prop, Vegetation == "Pynus sylvestris")
 litter_PA_sp <-decostand(select(litter_PS, aromatic:s_lignin), method = "hellinger")
-litter_pyr_rda_13c_ps <- rda(litter_PA_sp ~ d13C + Condition(Site), litter_PS)
+litter_pyr_rda_13c_ps <- rda(litter_PA_sp ~ d13C + wN + Condition(Site), litter_PS)
 anova(litter_pyr_rda_13c_ps)
 anova(litter_pyr_rda_13c_ps, by = "axis")
-plot(litter_pyr_rda_13c_ps, scaling = 3)
 
+pdf(file = "Output/Figs/d13C_analysis/Pyrolysis_RDA_Lhoriz_Psylvestris_d13C_wN.pdf", width = 6, height = 6)
+plot(litter_pyr_rda_13c_ps, scaling = 3, main = "Pyrolysis (L horizon, Pynus sylvestris) RDA vs. d13C, wN")
+dev.off()

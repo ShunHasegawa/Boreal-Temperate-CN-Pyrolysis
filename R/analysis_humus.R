@@ -125,6 +125,8 @@ save(humus_rda_pyr_df, pyr_humus_rda_sp, humus_pyr_sp, humus_pyr_rda,
 # NMDS --------------------------------------------------------------------
 
 humus_pyr_nmds <- metaMDS(humus_pyr_sp, distance = "bray")
+
+pdf(file = "Output/Figs/d13C_analysis/Pyrolysis_NMDS_Hhoriz.pdf", width = 6, height = 6)
 plot(humus_pyr_nmds, main = "Pyrolysis F/H horizon")
 abline(v = 0, h = 0, col = "gray40", lty = 2)
 ordispider(humus_pyr_nmds, paste(spect_humus_prop$Site, spect_humus_prop$Trt, sep = ":"),
@@ -133,7 +135,7 @@ ordispider(humus_pyr_nmds, paste(spect_humus_prop$Site, spect_humus_prop$Trt, se
                              rep(palette()[3], 3), rep(palette()[4], 2)))
 plot(envfit(humus_pyr_nmds ~ CN + d13C + wN + wC, spect_humus_prop), col = "purple")
 text(humus_pyr_nmds, display = "species", col = "brown")
-
+dev.off()
 
 
 
@@ -141,23 +143,29 @@ text(humus_pyr_nmds, display = "species", col = "brown")
 
 humus_pyr_rda_13c <- rda(humus_pyr_sp ~ d13C + wN + Condition(Site), spect_humus_prop)
 anova(humus_pyr_rda_13c, by = "margin")
-plot(humus_pyr_rda_13c, scaling = 3)
-text(humus_pyr_rda_13c, display = "species", col = "brown", scaling = 3)
 
+pdf(file = "Output/Figs/d13C_analysis/Pyrolysis_RDA_Hhoriz_d13C_wN.pdf", width = 6, height = 6)
+plot(humus_pyr_rda_13c, scaling = 3, main = "Pyrolysis (F/H horizon) RDA vs. d13C, wN")
+text(humus_pyr_rda_13c, display = "species", col = "brown", scaling = 3)
+dev.off()
 
 # Picea abies
 humus_PA <- filter(spect_humus_prop, Vegetation == "Picea abies")
 humus_PA_sp <-decostand(select(humus_PA, aromatic:s_lignin), method = "hellinger")
-humus_pyr_rda_13c_pa <- rda(humus_PA_sp ~ d13C + Condition(Site), humus_PA)
+humus_pyr_rda_13c_pa <- rda(humus_PA_sp ~ d13C + wN + Condition(Site), humus_PA)
 anova(humus_pyr_rda_13c_pa)
 anova(humus_pyr_rda_13c_pa, by = "axis")
-plot(humus_pyr_rda_13c_pa)
 
+pdf(file = "Output/Figs/d13C_analysis/Pyrolysis_RDA_Hhoriz_Pabies_d13C_wN.pdf", width = 6, height = 6)
+plot(humus_pyr_rda_13c_pa, scaling = 3, main = "Pyrolysis (F/H horizon, Picea abies) RDA vs. d13C, wN")
+dev.off()
 
 # Pynus sylvestris
 humus_PS <- filter(spect_humus_prop, Vegetation == "Pynus sylvestris")
 humus_PA_sp <-decostand(select(humus_PS, aromatic:s_lignin), method = "hellinger")
-humus_pyr_rda_13c_ps <- rda(humus_PA_sp ~ d13C + Condition(Site), humus_PS)
+humus_pyr_rda_13c_ps <- rda(humus_PA_sp ~ d13C + wN +  Condition(Site), humus_PS)
 anova(humus_pyr_rda_13c_ps)
 anova(humus_pyr_rda_13c_ps, by = "axis")
-plot(humus_pyr_rda_13c_ps, scaling = 3)
+pdf(file = "Output/Figs/d13C_analysis/Pyrolysis_RDA_Hhoriz_Psylvestris_d13C_wN.pdf", width = 6, height = 6)
+plot(humus_pyr_rda_13c_ps, scaling = 3, main = "Pyrolysis (F/H horizon, Pynus sylvestris) RDA vs. d13C, wN")
+dev.off()
