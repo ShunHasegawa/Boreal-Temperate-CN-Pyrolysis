@@ -1,180 +1,175 @@
 source("R/packages.R")
 source("R/functions.R")
 source("R/generic_functions.R")
-
-
-
-# Area size of raw spectrum for NIST --------------------------------------
-
-humus_spec_area_raw <- llply(list('Aheden'      = "Data/Spectra_Humus_Aheden.csv", 
-                                  'Svartberget' = "Data/Spectra_Humus_Svartberget.csv",
-                                  'Flakaliden'  = "Data/Spectra_Humus_Flakaliden.csv"),
-                             function(x){
-                               d0 <- read.csv(x) 
-                               d1 <- d0 %>% 
-                                 filter(Window == "Win001_C01") %>% 
-                                 mutate(Ave_Area_Prop = 0) %>% 
-                                 select(Window, RT_s, Ave_Area_Prop)
-                               d2 <- d0 %>% 
-                                 transmute(Window, RT_s, tot_area = rowSums(select(., starts_with("X")))) %>% 
-                                 filter(Window != "Win001_C01") %>%  # remove CO2
-                                 mutate(Ave_Area_Prop = tot_area * 100 / sum(tot_area)) %>% 
-                                 select(Window, RT_s, Ave_Area_Prop)
-                               return(rbind(d1, d2))
-                             })
-l_ply(names(humus_spec_area_raw),
-      function(x) write.csv(humus_spec_area_raw[[x]], 
-                            paste0("Output/Data/", x, "_Spectrum_area_humus.csv"),
-                            row.names = FALSE))
-
+sitecols <- brewer.pal(4, "Dark2")
 
 
 # Load data ---------------------------------------------------------------
-sitecols <- brewer.pal(4, "Dark2")
 
+# Rosinedal 2018
+load("Data/Pyrolysis_Rosinedal_Oct2018_litter_spectrum_prop.RData")
+load("Data/Pyrolysis_Rosinedal_Oct2018_humus_spectrum_prop.RData")
+Ros_spec_all <- ldply(list(Litter = litter_spec_all, Humus = humus_spec_all), .id = "Layer")
+names(Ros_spec_all)
+
+names(Ros_spec_all)
+Rosinedal_env <- Ros_spec_all %>%
+  rename(CN = CNratio,
+         DW = soilweight) %>% 
+  filter(location2 %in% c("fertilised:inside", "control")) %>%
+  mutate(Vegetation = "Pynus sylvestris",
+         Site = "Rosinedal",
+         treatment = mapvalues(treatment, c("control", "fertilised"), c("Control", "Fertilised")),
+         Trt = treatment,
+         TrtID = paste(Site, Trt, sep = "_"),
+         Vegetation = "Pynus sylvestris",
+         Nadd_yr = ifelse(treatment == "Control", 0, 73.08),
+         Start_yr = 2006,
+         End_yr = 2018,
+         Duration = 12,
+         Total_N = ifelse(treatment == "Control", 0, 950)) %>% 
+  select(wN, d15N, FN, wC, d13C, FC, Layer, Site, Nadd_yr, Start_yr, End_yr,Vegetation, Trt, DW, Duration, Total_N, CN, fileid, treatment, TrtID) %>% 
+  distinct() # remove duplicated rows
+
+# check there is no duplicate in fileid
+all(!duplicated(Rosinedal_env$fileid))
+
+# IRMS and other sites
 load("Data/IRMS.RData")
 irms_full <- irms_full %>% 
   mutate_if(is.factor, as.character)
 fileid_d <- read.csv("Data/Pyrolysis_sample_list.csv", sep = ";") %>% 
   mutate_all(.funs = funs(as.character)) %>% 
   select(Layer, fileid, Sample_ID) 
+
+# Merge
 trt_dd <- full_join(irms_full, fileid_d) %>% 
-  mutate(treatment = ifelse(Trt == "Control", "Control", "Fertilised"))
-trt_litter <- trt_dd %>% 
-  filter(Layer == "Litter")
-trt_humus <- trt_dd %>% 
-  filter(Layer == "Humus")
+  mutate(treatment = ifelse(Trt == "Control", "Control", "Fertilised")) %>% 
+  select(-Sample_ID, -Plate.ID, -Plot) %>% 
+  bind_rows(Rosinedal_env)
 
 
-# Litter analysis ---------------------------------------------------------
 
-# Rosinedal 2018
-load("Data/Pyrolysis_Rosinedal_Oct2018_litter_spectrum_prop.RData")
-names(litter_spec_all)
-names(litter_spec_all)
-Rosinedal_env <- litter_spec_all %>%
-  select(variable, treatment, location, wN, d15N, d13C, CNratio, leaf_d15N) %>% 
-  group_by(variable, treatment) %>% 
-  mutate_at(.vars = vars("wN", "d15N", "d13C", "CNratio", "leaf_d15N"), .funs = funs(mean))
 
-Rosinedal_litter_raw <- litter_spec_all %>% 
-  filter(location2 %in% c("fertilised:inside", "control")) %>% 
-  mutate(grp = ifelse(grp %in% c("carboxylic_acid", "ketone", "n_alkane", "n_alkene"), "Long_chain_aliphatic",
-                      ifelse(grp %in% c("chlorophyll", "steroid", "vitamin"), "Others", grp)),
-         treatment = ifelse(location2 == "fertilised:inside", "Fertilised", "Control")) %>% 
-  rename(Layer = layer) %>% 
-  select(grp, comp, variable, value, Layer, treatment, variable, CNratio, -location2) %>% 
-  group_by(grp, treatment, CNratio, Layer) %>% 
+# Multivariate analysis ---------------------------------------------------
+
+# Rosinedal spectum data
+Rosinedal_spec_raw <- Ros_spec_all %>% 
+  filter(location2 %in% c("fertilised:inside", "control")) %>%
+  mutate(grp = ifelse(grp %in% c("carboxylic_acid", "ketone", "n_alkane", "n_alkene", "other_aliphatics"), "Long_chain_aliphatic",
+                      ifelse(grp %in% c("chlorophyll", "steroid", "vitamin", "hopanoid"), "Others", grp)),
+         Site = "Rosinedal",
+         fileid = as.character(fileid)) %>% 
+  select(fileid, Layer, Site, grp, value) %>% 
+  group_by(Layer, Site, grp, fileid) %>% 
   summarise(value = sum(value)) %>% 
   ungroup() %>% 
-  spread(grp, value) %>% 
-  droplevels() %>% 
-  rename(CN = CNratio) %>% 
-  mutate(Site = "Rosinedal", 
-         Trt = treatment)
+  spread(grp, value)
+rowSums(select(Rosinedal_spec_raw, aromatic:s_lignin))
+Rosinedal_litter_raw <- filter(Rosinedal_spec_raw, Layer == "Litter")
+Rosinedal_humus_raw <- filter(Rosinedal_spec_raw, Layer == "Humus")
 
 
-# Svartberget, Aheden, Flakaliden —litter—
-comp_litter <- ldply(c('Aheden'      = "Data/Compound_Litter_Aheden.csv",
-                       'Svartberget' = "Data/Compound_Litter_Svartberget.csv",
-                       'Flakaliden'  = "Data/Comound_Litter_Flakaliden.csv"),
-  read.csv, .id = "Site") %>%
-  select(Site, Window, Group)
+source("R/analysys_litter.R")
+source("R/analysys_humus.R")
 
-spect_litter <- ldply(c('Aheden'      = "Data/Spectra_Litter_Aheden.csv",
-                        'Svartberget' = "Data/Spectra_Litter_Svartberget.csv",
-                        'Flakaliden'  = "Data/Spectra_Litter_Flakaliden.csv"),
-                         function(x){
-                           d <- read.csv(x) %>% 
-                             gather(key = "variable", "value", starts_with("X")) 
-                           return(d)
-                         },
-                      .id = "Site") %>% 
-  select(-RI, -RT_s) %>% 
-  left_join(comp_litter) %>% 
-  mutate(Layer = "Litter",
-         fileid = as.character(as.numeric(gsub("X", "", variable)))) %>% 
-  group_by(Site, variable, Group, Layer, fileid) %>% 
-  summarise(value = sum(value)) %>% 
-  left_join(trt_dd)
 
-# proportion for biproducts (CO2, sulfur comp) and unk
-spect_litter_allprop <- spect_litter %>% 
-  group_by(Site, variable) %>% 
-  mutate(prop = value/sum(value)) %>% 
-  group_by(Site, Group) %>% 
-  summarise(prop = mean(prop))
-filter(spect_litter_allprop, Group  %in% c("co2", "sulfur_comp", "unk"))
-
-# Calculate prop withough biproducts and unk
-spect_litter_prop <- spect_litter %>% 
-  filter(!(Group %in% c("co2", "sulfur_comp", "unk"))) %>% 
-  group_by(Site, variable, Layer, Trt) %>% 
-  mutate(prop = value/sum(value),
-         grp = ifelse(Group %in% c("n-diketone", "n-ketone", "n-alkane", "n-alkene", "n-alkanal", "n-FA"), "Long_chain_aliphatic",
-                      ifelse(Group %in% c("chlorophyll", "steroid", "vitamin"), "Others", 
-                             as.character(Group))),
-         grp = gsub("-", "_", grp)) %>% 
-  group_by(Site, variable, grp, CN, treatment, Layer, Trt) %>% 
-  summarise(prop = sum(prop)) %>% 
-  ungroup() %>% 
-  select(Layer, Site, variable, CN, grp, treatment, Trt, prop) %>% 
-  spread(grp, prop) %>% 
-  bind_rows(Rosinedal_litter_raw) %>% 
-  mutate(Trt  = factor(Trt, 
-                       levels = c("Control", "Fertilised", "IN_100", "N1", 
-                                  "N2", paste0("N", c(3, 6, 12, 50), "kg"))))
+# Merge RDA figures
+rda_pyr_p <- ggarrange(litter_rda_pyr_site_p + 
+                         theme(axis.text.x = element_blank(),
+                               plot.margin = margin(t = .2, r = 0, b = .5, l = .5, unit = "line")),
+                       litter_rda_pyrsp_p +
+                         theme(plot.margin = margin(t = .2, r = 0, b = .5, l = .2, unit = "line")),
+                       humus_rda_pyr_site_p + 
+                         theme(strip.background = element_blank(),
+                               strip.text = element_blank(),
+                               plot.margin = margin(t = 0, r = 0, b = .5, l = .5, unit = "line")),  
+                       humus_rda_pyrsp_p +
+                         theme(plot.margin = margin(t = 0, r = 0, b = .5, l = .2, unit = "line")), 
+                       ncol = 2, widths = c(2, .9), nrow = 2, heights = c(1, 1))
+rda_pyr_p
+ggsavePP(filename = "Output/Figs/RDA_Pyrolysis_HumusLitter", rda_pyr_p, 
+       width = 8, height= 5)
 
 
 
-# RDA ---------------------------------------------------------------------
-litter_pyr_sp <- decostand(select(spect_litter_prop, aromatic:s_lignin), method = "hellinger")
-litter_pyr_rda <- rda(litter_pyr_sp ~ treatment * Site + Condition(Site), spect_litter_prop)
+# Lignin:Carbohydrate ratios ----------------------------------------------
 
-anova(litter_pyr_rda, strata = spect_litter_prop$Site)
-summary(litter_pyr_rda)
-plot(litter_pyr_rda)
-ordispider(litter_pyr_rda, interaction(spect_litter_prop$Site, spect_litter_prop$treatment), label = TRUE, 
-           cex = .4, col = rep(palette()[1:5], 2))
+lcr_litter <- spect_litter_prop %>% 
+  mutate(lcr = g_lignin/carbohydrate)
+ggplot(lcr_litter, aes(x = Trt, y = lcr))+
+  geom_boxplot(aes(col = Site))+
+  facet_grid(. ~ Site, scales = "free_x", space = "free_x")
 
-litter_rda_pyr_df <- data.frame(scores(litter_pyr_rda)$sites) %>% 
-  bind_cols(spect_litter_prop) 
-litter_rda_pyr_site_p <- ggplot(litter_rda_pyr_df, aes(x = Trt, y = -RDA1))+
-  geom_hline(yintercept = 0, linetype = "dotted") +
-  geom_boxplot(aes(col = Site), outlier.colour = "white")+
-  geom_jitter(aes(col = Site), width = .1, alpha = .7)+
+ggplot(lcr_litter, aes(x = Trt, y = N_comp))+
+  geom_boxplot(aes(col = Site))+
+  facet_grid(. ~ Site, scales = "free_x", space = "free_x")
+
+lcr_litter_cntr <- lcr_litter %>% 
+  filter(treatment == "Control") %>% 
+  group_by(Site) %>% 
+  summarise(lcr_cntr = mean(lcr),
+            CN_cntr = mean(CN)) %>% 
+  ungroup()
+
+lcr_litter_fert <- lcr_litter %>% 
+  filter(treatment == "Fertilised") %>% 
+  left_join(lcr_litter_cntr) %>% 
+  mutate(logRR = log(lcr/lcr_cntr))
+
+ggplot(lcr_litter_fert, aes(x = log(Total_N), y = logRR))+
+  geom_hline(yintercept = 0, linetype = "dotted")+
+  geom_boxplot(aes(col = Site, group = Total_N))
+
+ggplot(lcr_litter_fert, aes(x = Duration, y = logRR))+
+  geom_hline(yintercept = 0, linetype = "dotted")+
+  geom_boxplot(aes(col = Site, group = Duration))
+
+lcr_humus <- spect_humus_prop %>% 
+  mutate(lcr = g_lignin/carbohydrate)
+ggplot(lcr_humus, aes(x = Trt, y = lcr))+
+  geom_boxplot(aes(col = Site))+
+  facet_grid(. ~ Site, scales = "free_x", space = "free_x")
+
+ggplot(lcr_humus, aes(x = Trt, y = N_comp))+
+  geom_boxplot(aes(col = Site))+
+  facet_grid(. ~ Site, scales = "free_x", space = "free_x")
+
+
+lcr_humus_cntr <- lcr_humus %>% 
+  filter(treatment == "Control") %>% 
+  group_by(Site) %>% 
+  summarise(lcr_cntr = mean(lcr),
+            CN_cntr = mean(CN)) %>% 
+  ungroup()
+
+lcr_humus_fert <- lcr_humus %>% 
+  filter(treatment == "Fertilised") %>% 
+  left_join(lcr_humus_cntr) %>% 
+  mutate(logRR = log(lcr/lcr_cntr))
+
+ggplot(lcr_humus_fert, aes(x = log(Total_N), y = logRR))+
+  geom_hline(yintercept = 0, linetype = "dotted")+
+  geom_boxplot(aes(col = Site, group = Total_N))
+
+
+lcr_full <- bind_rows(lcr_litter_fert, lcr_humus_fert) %>% 
+  mutate(layer2 = mapvalues(Layer, c("Humus", "Litter"), c("F/H horizon", "L horizon")),
+         Layer2 = factor(layer2, levels = c("L horizon", "F/H horizon")))
+lcr_fig <- ggplot(lcr_full, aes(x = Total_N, y = logRR))+
+  geom_hline(yintercept = 0, linetype = "dotted")+
+  geom_boxplot(aes(col = Site, group = Total_N), size = .3)+
+  facet_grid(Layer2 ~ .)+
   scale_color_manual(values = sitecols)+
-  facet_grid(. ~ Site, scales = "free_x", space = "free_x")+
-  lims(y = c(-.9, 1.5)) +
-  labs(x = NULL, y = get_PCA_axislab(litter_rda))+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "none")
-
-# Sp score
-pyr_litter_rda_sp   <- data.frame(scores(litter_rda)$species) %>% 
-  mutate(pyr_comp = row.names(.),
-         pyr_comp = factor(pyr_comp, levels = pyr_comp[order(RDA1)])) %>% 
-  arrange(RDA1)
+  labs(x = "Total added N (kg)", y = "log RR of ligin:carbohydrate")+
+  theme(legend.position = "none")
+ggsavePP("Output/Figs/lignin_carbohydrate_ratio", lcr_fig, width = 6, height = 6)
 
 
-pyr_comp_ed <- c("G lignin", "N comp.", "Phenol", "Aromatic", "Others", "S lignin", "Long-chain aliphatic", "Carbohydrate")
-litter_rda_pyrsp_p <- ggplot(pyr_litter_rda_sp, aes(x = -1, y = -RDA1*5, label = pyr_comp_ed)) +
-  geom_hline(yintercept = 0, linetype = "dotted") +
-  geom_vline(xintercept = -1.1) +
-  geom_point(aes(x = -1.1), size = 1) +
-  geom_text(hjust  = 0,  size = 4) +
-  labs(x = "", y = "") +
-  lims(x = c(-1.15, 1.11), y = c(-.9, 1.5)) +
-  science_theme +
-  theme(panel.border = element_blank(), 
-        axis.text.x = element_blank(), 
-        axis.text.y = element_blank(), 
-        axis.ticks.x = element_blank(), 
-        axis.ticks.y = element_blank())
-litter_rda_pyrsp_p
-
-litter_rda_pyr_p <- ggarrange(litter_rda_pyr_site_p, litter_rda_pyrsp_p, ncol = 2, widths = c(2, .9))
-litter_rda_pyr_p
-
-save(litter_rda_pyr_df, pyr_litter_rda_sp, litter_pyr_sp, litter_pyr_rda,
-     file = "Output/Data/Pyr_RDA.RDA")
+cn_all <- ggplot(lcr_full, aes(x = Total_N, y = CN))+
+  geom_hline(aes(yintercept = CN_cntr, col = Site), alpha = .7)+
+  geom_boxplot(aes(col = Site, group = Total_N))+
+  facet_grid(Layer2 ~ .)+
+  scale_color_manual(values = sitecols)+
+  labs(x = "Total added N (kg)", y = "C:N ratio")
+ggsavePP("Output/Figs/CNratio_totalN", cn_all, width = 6, height = 4)
