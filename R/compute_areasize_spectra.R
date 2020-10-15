@@ -8,7 +8,8 @@ source("R/packages.R")
 
 humus_spec_area_raw <- llply(list('Aheden'      = "Data/Spectra_Humus_Aheden.csv", 
                                   'Svartberget' = "Data/Spectra_Humus_Svartberget.csv",
-                                  'Flakaliden'  = "Data/Spectra_Humus_Flakaliden.csv"),
+                                  'Flakaliden'  = "Data/Spectra_Humus_Flakaliden.csv",
+                                  'RosinedalOF_v2' = "Data/Spectra_Humus_RosinedalOF_v2.csv"),
                              function(x){
                                d0 <- read.csv(x) 
                                d1 <- d0 %>% 
