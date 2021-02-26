@@ -23,10 +23,9 @@ all_comps <- llply(comp_fls, function(x){
   
 })
 
-
 merged_comp <- Reduce(function(...) merge(..., all = TRUE), all_comps) %>% 
   select(-contains("rep")) %>% 
-  mutate_all(.funs = funs(ifelse(is.na(.), "", as.character(.))))
+  mutate_all(.funs = list(~ifelse(is.na(.), "", as.character(.))))
 
 # check if there is no redundant rows
 sapply(all_comps, nrow)
