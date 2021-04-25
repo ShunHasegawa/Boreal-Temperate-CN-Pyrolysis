@@ -39,7 +39,7 @@ load("Data/IRMS.RData")
 irms_full <- irms_full %>% 
   mutate_if(is.factor, as.character)
 fileid_d <- read.csv("Data/Pyrolysis_sample_list.csv", sep = ";") %>% 
-  mutate_all(.funs = funs(as.character)) %>% 
+  mutate_all(.funs = list(as.character)) %>% 
   select(Layer, fileid, Sample_ID) 
 
 # Merge
@@ -71,7 +71,7 @@ Rosinedal_humus_raw <- filter(Rosinedal_spec_raw, Layer == "Humus")
 
 
 source("R/analysys_litter.R")
-source("R/analysys_humus.R")
+source("R/analysis_humus.R")
 
 
 # Merge RDA figures
@@ -97,13 +97,13 @@ ggsavePP(filename = "Output/Figs/RDA_Pyrolysis_HumusLitter", rda_pyr_p,
 
 lcr_litter <- spect_litter_prop %>% 
   mutate(lcr = g_lignin/carbohydrate)
-ggplot(lcr_litter, aes(x = Trt, y = lcr))+
-  geom_boxplot(aes(col = Site))+
-  facet_grid(. ~ Site, scales = "free_x", space = "free_x")
+names(lcr_litter)
+
 
 ggplot(lcr_litter, aes(x = Trt, y = N_comp))+
   geom_boxplot(aes(col = Site))+
   facet_grid(. ~ Site, scales = "free_x", space = "free_x")
+
 
 lcr_litter_cntr <- lcr_litter %>% 
   filter(treatment == "Control") %>% 
@@ -173,3 +173,22 @@ cn_all <- ggplot(lcr_full, aes(x = Total_N, y = CN))+
   scale_color_manual(values = sitecols)+
   labs(x = "Total added N (kg)", y = "C:N ratio")
 ggsavePP("Output/Figs/CNratio_totalN", cn_all, width = 6, height = 4)
+
+
+lc_all <- rbind(lcr_humus, lcr_litter) %>% 
+  mutate(Horizon = ifelse(Layer == "Humus", "F/H horizon", "L horizon"),
+         Horizon = factor(Horizon, levels = c("L horizon", "F/H horizon"))) %>% 
+  group_by(Horizon, Site, Trt) %>% 
+  summarise_at(.vars = vars(lcr), .funs = list(M = mean, SE = se, N = get_n))
+
+lcratio_p <- ggplot(lc_all, aes(x = Trt, y = M))+
+  geom_bar(aes(fill = Site), stat = "identity")+
+  geom_errorbar(aes(ymin = M - SE, ymax = M + SE), width = .2, size = .5)+
+  facet_grid(Horizon ~ Site, scales = "free", space = "free_x")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")+
+  labs(x = NULL, y = "Lignin:Carbohydrate ratio")+
+  scale_fill_manual(values = sitecols)
+lcratio_p
+ggsavePP(filename = "Output/Figs/LC_ratio_bySite", width = 6, height = 6,
+         plot = lcratio_p)
