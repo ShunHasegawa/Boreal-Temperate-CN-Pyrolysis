@@ -57,5 +57,5 @@ us_spec_area_raw <- llply(list('BR'      = "Data/US_Soil/Spectra/Spectra_BR.csv"
 l_ply(names(us_spec_area_raw),
       function(x) write.csv(us_spec_area_raw[[x]], 
                             paste0("Output/Data/US_soil/", x, "_Spectrum_area.csv"),
-                            row.names = FALSE))
+                            row.names = TRUE))
 
