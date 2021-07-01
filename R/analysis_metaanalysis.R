@@ -239,22 +239,6 @@ mm17_p <- cbind(ggplotGrob(mm17_cnr_p),
 # grid.draw(mm17_p)
 ggsavePP("Output/Figs/metaanalysis_model2", mm17_p, 6.5, 3.5)
 
-par(mfrow = c(1, 2))
-plot(yi ~ N_added, rom, type = "n", pch = 16, ylim = c(-.5, 1), xlab = "N-added (kg N ha-1)", ylab = "log response ratio", main = "Lignin:Carbohydrate")
-d_ply(rom, .(Biome), function(x) points(yi ~ N_added, x, col = "black", bg = biom_col, pch = 21, cex = size))
-lines(yi  ~ N_added, mm17_pred_nad, col = "blue")
-lines(ci.lb ~ N_added, mm17_pred_nad, lty = "dotted", col = "blue")
-lines(ci.ub ~ N_added, mm17_pred_nad, lty = "dotted", col = "blue")
-abline(h = 0, lty = "dashed", col = "gray30")
-with(distinct(select(rom, Biome, biom_col)), 
-     legend(6, 1, legend = Biome, pch = 16, col = biom_col, bty = "n"))
-
-plot(yi ~ CNratio, rom, type = "n", pch = 16, ylim = c(-.5, 1), xlab = "C:N ratio", ylab = "log response ratio")
-d_ply(rom, .(Biome), function(x) points(yi ~ CNratio, x, col = biom_col, pch = 16, cex = size))
-lines(yi  ~ CNratio , mm17_pred_cnr, col = "blue")
-lines(ci.lb ~ CNratio , mm17_pred_cnr, lty = "dotted", col = "blue")
-lines(ci.ub ~ CNratio , mm17_pred_cnr, lty = "dotted", col = "blue")
-abline(h = 0, lty = "dashed", col = "gray30")
 
 
 
