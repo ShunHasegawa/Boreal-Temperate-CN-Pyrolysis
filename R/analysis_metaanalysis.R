@@ -194,22 +194,6 @@ mm6_p <- cbind(ggplotGrob(mm6_CNcntrl_p),
 # grid.draw(mm6_p)
 ggsavePP("Output/Figs/metaanalysis_model1", mm6_p, 6.5, 3.5)
 
-par(mfrow = c(1, 2))
-plot(yi ~ N_year, rom, type = "n", pch = 16, ylim = c(-.5, 1), xlab = "N-added period (year)", ylab = "log response ratio", main = "Lignin:Carbohydrate")
-d_ply(rom, .(Biome), function(x) points(yi ~ N_year, x, bg = biom_col, pch = 21, cex = size))
-lines(pred ~ N_year , mm6_pred_nyr, col = "blue")
-lines(ci.lb ~ N_year, mm6_pred_nyr, lty = "dotted", col = "blue")
-lines(ci.ub ~ N_year, mm6_pred_nyr, lty = "dotted", col = "blue")
-abline(h = 0, lty = "dashed", col = "gray30")
-with(distinct(select(rom, Biome, biom_col)), 
-     legend(6, 1, legend = Biome, pch = 16, col = biom_col, bty = "n"))
-
-plot(yi ~ CN_cntrl, rom, type = "n", pch = 16, ylim = c(-.5, 1), xlab = "C:N ratio at Control", ylab = "log response ratio")
-d_ply(rom, .(Biome), function(x) points(yi ~ CN_cntrl, x, col = biom_col, pch = 16, cex = size))
-lines(pred  ~ CN_cntrl , mm6_pred_cnc, col = "blue")
-lines(ci.lb ~ CN_cntrl , mm6_pred_cnc, lty = "dotted", col = "blue")
-lines(ci.ub ~ CN_cntrl , mm6_pred_cnc, lty = "dotted", col = "blue")
-abline(h = 0, lty = "dashed", col = "gray30")
 
 # alternative model
 mm17 <- rma.mv(yi, vi, data = rom, mod = ~ CNratio + N_added)
@@ -218,15 +202,47 @@ range(rom$CNratio)
 range(rom$N_added)
 mm17_pred_cnr <- predict(mm17, cbind(seq(18, 49, length.out = 100), mean(rom$N_added)), addx = TRUE) %>% 
   data.frame(.) %>%
-  rename(CNratio = X.CNratio)
+  rename(yi      = pred,
+         CNratio = X.CNratio)
 mm17_pred_nad <- predict(mm17, cbind(mean(rom$CNratio), seq(48, 2000, length.out = 100)), addx = TRUE) %>% 
   data.frame(.) %>%
-  rename(N_added = X.N_added)
+  rename(yi      = pred,
+         N_added = X.N_added)
+
+mm17_cnr_p <- ggplot(rom, aes(x = CNratio, y = yi))+
+  geom_hline(yintercept = 0, col = "gray30", linetype = "dashed")+
+  geom_point(aes(fill = Biome, size = wi), col = "black", alpha = .7, shape = 21)+
+  geom_line(data = mm17_pred_cnr, col = "blue")+
+  geom_line(data = mm17_pred_cnr, aes(y = ci.lb), col = "blue", linetype = "dotted")+
+  geom_line(data = mm17_pred_cnr, aes(y = ci.ub), col = "blue", linetype = "dotted")+
+  scale_fill_manual(values = c("black", "red"))+
+  scale_size_continuous(range = c(1, 10), guide = FALSE)+
+  labs(x = "C:N ratio", y = "Log response ratio")+
+  theme(legend.position   = c(.2, .85),
+        legend.title      = element_blank(),
+        legend.background = element_blank())
+
+mm17_nad_p <- ggplot(rom, aes(x = N_added, y = yi))+
+  geom_hline(yintercept = 0, col = "gray30", linetype = "dashed")+
+  geom_point(aes(fill = Biome, size = wi), col = "black", alpha = .7, shape = 21)+
+  geom_line(data = mm17_pred_nad, col = "blue")+
+  geom_line(data = mm17_pred_nad, aes(y = ci.lb), col = "blue", linetype = "dotted")+
+  geom_line(data = mm17_pred_nad, aes(y = ci.ub), col = "blue", linetype = "dotted")+
+  scale_fill_manual(values = c("black", "red"))+
+  scale_size_continuous(range = c(1, 10), guide = FALSE)+
+  theme(legend.position = "none")+
+  labs(x = "Total added N (kg ha-1)", y = "Log response ratio")
+
+mm17_p <- cbind(ggplotGrob(mm17_cnr_p), 
+                ggplotGrob(mm17_nad_p))  
+# grid.newpage()
+# grid.draw(mm17_p)
+ggsavePP("Output/Figs/metaanalysis_model2", mm17_p, 6.5, 3.5)
 
 par(mfrow = c(1, 2))
 plot(yi ~ N_added, rom, type = "n", pch = 16, ylim = c(-.5, 1), xlab = "N-added (kg N ha-1)", ylab = "log response ratio", main = "Lignin:Carbohydrate")
 d_ply(rom, .(Biome), function(x) points(yi ~ N_added, x, col = "black", bg = biom_col, pch = 21, cex = size))
-lines(pred  ~ N_added, mm17_pred_nad, col = "blue")
+lines(yi  ~ N_added, mm17_pred_nad, col = "blue")
 lines(ci.lb ~ N_added, mm17_pred_nad, lty = "dotted", col = "blue")
 lines(ci.ub ~ N_added, mm17_pred_nad, lty = "dotted", col = "blue")
 abline(h = 0, lty = "dashed", col = "gray30")
@@ -235,7 +251,7 @@ with(distinct(select(rom, Biome, biom_col)),
 
 plot(yi ~ CNratio, rom, type = "n", pch = 16, ylim = c(-.5, 1), xlab = "C:N ratio", ylab = "log response ratio")
 d_ply(rom, .(Biome), function(x) points(yi ~ CNratio, x, col = biom_col, pch = 16, cex = size))
-lines(pred  ~ CNratio , mm17_pred_cnr, col = "blue")
+lines(yi  ~ CNratio , mm17_pred_cnr, col = "blue")
 lines(ci.lb ~ CNratio , mm17_pred_cnr, lty = "dotted", col = "blue")
 lines(ci.ub ~ CNratio , mm17_pred_cnr, lty = "dotted", col = "blue")
 abline(h = 0, lty = "dashed", col = "gray30")
