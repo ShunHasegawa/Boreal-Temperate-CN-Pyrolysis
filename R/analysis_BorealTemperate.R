@@ -107,7 +107,7 @@ spect_tb_d <- spect_tb_prop %>%
 plot(spect_tb_d$lcratio)
 which.max(spect_tb_d$lcratio)
 spect_tb_d[23, ]
-spect_tb_d <- spect_tb_d[-23, ]
+spect_tb_d <- filter(spect_tb_d, fileid != 211)
 
 
 
@@ -128,13 +128,14 @@ ordispider(tb_pyr_rda, interaction(spect_tb_d$Site, spect_tb_d$TrtID), label = T
 tb_rda_pyr_df <- data.frame(scores(tb_pyr_rda, choices = 1, display = "sites", scaling = 3)) %>% 
   bind_cols(spect_tb_d) 
 
-tb_rda_pyr_site_p <- ggplot(tb_rda_pyr_df, aes(x = gsub(".*_", "", TrtID), y = -RDA1))+
+tb_rda_pyr_site_p <- ggplot(tb_rda_pyr_df, aes(x = TrtID, y = -RDA1))+
   geom_hline(yintercept = 0, linetype = "dotted") +
   geom_boxplot(aes(col = Site), outlier.colour = "white", size = .3)+
   geom_jitter(aes(col = Site), width = .1, alpha = .7)+
   scale_color_manual(values = sitecols)+
   facet_grid(. ~ Site, scales = "free_x", space = "free_x")+
   labs(x = NULL, y = get_PCA_axislab(tb_pyr_rda))+
+  lims(y = c(-.46, .44))+
   theme(axis.text.x     = element_text(angle = 45, hjust = 1, size = 5),
         legend.position = "none",
         strip.text.x = element_text(size = 4))
@@ -154,7 +155,7 @@ tb_rda_pyrsp_p <- ggplot(pyr_tb_rda_sp, aes(x = -1, y = -RDA1, label = pyr_comp_
   geom_point(aes(x = -1.1), size = 1) +
   geom_text(hjust  = 0,  size = 2) +
   labs(x = NULL, y = NULL) +
-  lims(x = c(-1.15, 1.11), y = c(-.4, .51)) +
+  lims(x = c(-1.15, 1.11), y = c(-.46, .45)) +
   science_theme +
   theme(panel.border = element_blank(), 
         axis.text.x = element_blank(), 
@@ -167,6 +168,17 @@ tb_rda_pyr_p <- ggarrange(tb_rda_pyr_site_p, tb_rda_pyrsp_p, ncol = 2, widths = 
 tb_rda_pyr_p
 ggsavePP(filename = "Output/Figs/Pyr_RDA_BorealTemperate", tb_rda_pyr_p, 6.5, 3)
 
+
+# . By Site ---------------------------------------------------------------
+
+rda_bysite_res <- dlply(spect_tb_d, .(Site), rda_bysite)
+llply(rda_bysite_res, function(x) anova(x$model))
+
+# save RDA figs
+l_ply(names(rda_bysite_res), function(x){
+  p <- rda_bysite_res[[x]]$fig
+  ggsavePP(filename = paste0("Output/Figs/Pyr_RDA_", x), p, 3, 3)
+})
 
 
 
@@ -181,4 +193,42 @@ ordispider(tb_pyr_nmds, spect_tb_d$TrtID, label = TRUE, cex = .4)
 plot(envfit(tb_pyr_nmds ~ CNratio + d13C + wN + wC, spect_tb_d), col = "purple")
 text(tb_pyr_nmds, display = "species", col = "brown")
 dev.off()
+
+
+
+# Figs -----------------------------------------------------
+
+# Lignin:carbohydrate
+bt_lc_p <- ggplot(spect_tb_d, aes(x = TrtID, y = lcratio))+
+  geom_boxplot(aes(col = Site), outlier.colour = "white", size = .3)+
+  geom_jitter(aes(col = Site), width = .1, alpha = .7)+
+  scale_color_manual(values = sitecols)+
+  facet_grid(. ~ Site, scales = "free_x", space = "free_x")+
+  theme(axis.text.x     = element_text(angle = 45, hjust = 1, size = 5),
+        legend.position = "none",
+        strip.text.x = element_text(size = 4))+
+  labs(x = NULL, y = "Lignin:Carbohydrate ratio")
+ggsavePP("Output/Figs/bt_LC_ratio", bt_lc_p, 6.5, 3)
+
+# N compound
+bt_ncmp_p <- ggplot(spect_tb_d, aes(x = TrtID, y = N_comp * 100))+
+  geom_boxplot(aes(col = Site), outlier.colour = "white", size = .3)+
+  geom_jitter(aes(col = Site), width = .1, alpha = .7)+
+  scale_color_manual(values = sitecols)+
+  facet_grid(. ~ Site, scales = "free_x", space = "free_x")+
+  theme(axis.text.x     = element_text(angle = 45, hjust = 1, size = 5),
+        legend.position = "none",
+        strip.text.x = element_text(size = 4)) +
+  labs(x = NULL, y = "Pyr-N compound (%)")
+ggsavePP("Output/Figs/bt_Pyr_Ncomp", bt_ncmp_p, 6.5, 3)
+
+
+
+
+# Analysis -----------------------------------------------------------
+# Linear model
+source("R/analysis_BorealTemperate_LM.R") 
+
+# meta analysis
+source("R/analysis_BorealTemperate_meta.R") 
 

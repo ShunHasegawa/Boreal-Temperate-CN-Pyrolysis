@@ -12,7 +12,7 @@ sitecols <- c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#999914", 
 load("Data/Pyrolysis_Rosinedal_Oct2018_litter_spectrum_prop.RData")
 load("Data/Pyrolysis_Rosinedal_Oct2018_humus_spectrum_prop.RData")
 Ros_spec_all <- ldply(list(Litter = litter_spec_all, Humus = humus_spec_all), .id = "Horizon") %>% 
-  # filter(location2 %in% c("fertilised:inside", "control")) %>% 
+  filter(location2 %in% c("fertilised:inside", "control")) %>%
   mutate(fileid     = as.character(fileid),
          Treatment  = mapvalues(treatment, c("control", "fertilised"), c("Control", "Fertilised")),
          Vegetation = "Pynus sylvestris",
@@ -115,8 +115,32 @@ trt_bt_d <- trt_br_d %>%
 # script needs updating to be run.
 
 # load, process and alysed the samples from the humus together with the US samples
-source("R/analysis_humus.R")
+source("R/analysis_BorealTemperate.R")
 
 
 
+# Figs for Environmental variables ----------------------------------------
 
+# outlier was identified above
+filter(trt_bt_d, fileid == 211)
+trt_bt_d <- filter(trt_bt_d, fileid != 211)
+
+# CN catio
+bt_cn_P <- ggplot(trt_bt_d, aes(x = TrtID, y = CNratio))+
+  geom_boxplot(aes(col = Site), outlier.colour = "white", size = .3)+
+  geom_jitter(aes(col = Site), width = .1, alpha = .7)+
+  scale_color_manual(values = c(sitecols, "black", "black"))+
+  facet_grid(. ~ Site, scales = "free_x", space = "free_x")+
+  theme(axis.text.x     = element_text(angle = 45, hjust = 1, size = 5),
+        legend.position = "none",
+        strip.text.x = element_text(size = 4))+
+  labs(y = "C:N ratio", x = NULL)
+ggsavePP("Output/Figs/Environment/CNratio", bt_cn_P, 6.5, 3)
+
+# N addition
+bt_nad_p <- ggplot(filter(site_dd, Treatment == "Fertilised"), aes(x = N_year, y = N_rate))+
+  geom_text(aes(label = Site, col = Site, size = N_added))+
+  scale_color_manual(values = c(sitecols, "black", "black"), guide = FALSE)+
+  labs(x = "N added period (year)", y = "N added rate (kg ha-1 year-1)")+
+  lims(x = c(6, 37))
+ggsavePP("Output/Figs/Environment/Nadd", bt_nad_p, 5, 4)
