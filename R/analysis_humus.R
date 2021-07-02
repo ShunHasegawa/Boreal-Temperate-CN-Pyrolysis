@@ -1,19 +1,20 @@
-# Humus analysis ---------------------------------------------------------
+
+# Boreal forest -----------------------------------------------------------
 
 # NOTE!! X273_1 and X268_1 should be checked if they are the same sample (but
 # more quantity) as X273 and X268, respectively. There is a small chance that I
-# have messed up the order and labelled wrongly.....
+# have messed up the order and labeled wrongly.....
 
 # Svartberget, Aheden, Flakaliden —humus—
-comp_humus <- ldply(c('Aheden'      = "Data/Compound_humus_Aheden.csv",
-                       'Svartberget' = "Data/Compound_humus_Svartberget.csv",
-                       'Flakaliden'  = "Data/Compound_humus_Flakaliden.csv"),
+br_comp_humus <- ldply(c('Aheden'      = "Data/Compound_humus_Aheden.csv",
+                         'Svartberget' = "Data/Compound_humus_Svartberget.csv",
+                         'Flakaliden'  = "Data/Compound_humus_Flakaliden.csv"),
                      read.csv, .id = "Site") %>%
   select(Site, Window, Group)
 
-spect_humus <- ldply(c('Aheden'      = "Data/Spectra_humus_Aheden.csv",
-                       'Svartberget' = "Data/Spectra_humus_Svartberget.csv",
-                       'Flakaliden'  = "Data/Spectra_humus_Flakaliden.csv"),
+br_spect_humus <- ldply(c('Aheden'      = "Data/Spectra_humus_Aheden.csv",
+                          'Svartberget' = "Data/Spectra_humus_Svartberget.csv",
+                          'Flakaliden'  = "Data/Spectra_humus_Flakaliden.csv"),
                      function(x){
                        d <- read.csv(x) %>% 
                          gather(key = "variable", "value", starts_with("X")) 
@@ -21,76 +22,125 @@ spect_humus <- ldply(c('Aheden'      = "Data/Spectra_humus_Aheden.csv",
                      },
                      .id = "Site") %>% 
   select(-RI, -RT_s) %>% 
-  left_join(comp_humus) %>% 
-  # X273 showed week signal, so realysed and IDed as X273_1
+  left_join(br_comp_humus) %>% 
+  # X273 showed weak signal, so re-analysed and IDed as X273_1
   filter(variable != "X273") %>% 
   mutate(variable = mapvalues(variable, "X273_1", "X273")) %>% 
-  mutate(Layer = "Humus",
-         fileid = as.character(as.numeric(gsub("X", "", variable)))) %>% 
-  group_by(Site, variable, Group, Layer, fileid) %>% 
-  summarise(value = sum(value)) %>% 
-  ungroup()
+  mutate(fileid = as.character(as.numeric(gsub("X", "", variable)))) %>% 
+  group_by(Site, variable, Group, fileid) %>% 
+  summarise(value = sum(value), .groups = "drop")
+
+
+# US samples --------------------------------------------------------------
+tm_comp <- ldply(c('BR' = "Data/US_Soil/Compound/Compound_US_BR.csv",
+                   'CA' = "Data/US_Soil/Compound/Compound_US_CA.csv",
+                   'FE' = "Data/US_Soil/Compound/Compound_US_FE.csv",
+                   'HF' = "Data/US_Soil/Compound/Compound_US_HF.csv",
+                   'KA' = "Data/US_Soil/Compound/Compound_US_KA.csv",
+                   'ME' = "Data/US_Soil/Compound/Compound_US_ME.csv",
+                   'NH' = "Data/US_Soil/Compound/Compound_US_NH.csv"),
+                 read.csv, .id = "Site") %>%
+  select(Site, Window, Group)
+
+tm_spect <- ldply(c('BR' = "Data/US_Soil/Spectra/Spectra_BR.csv",
+                    'CA' = "Data/US_Soil/Spectra/Spectra_CA.csv",
+                    'FE' = "Data/US_Soil/Spectra/Spectra_FE.csv",
+                    'HF' = "Data/US_Soil/Spectra/Spectra_HF.csv",
+                    'KA' = "Data/US_Soil/Spectra/Spectra_KA.csv",
+                    'ME' = "Data/US_Soil/Spectra/Spectra_ME.csv",
+                    'NH' = "Data/US_Soil/Spectra/Spectra_NH.csv"),
+                  function(x){
+                    d <- read.csv(x) %>% 
+                      gather(key = "variable", "value", starts_with("BR")) 
+                    return(d)
+                  },
+                  .id = "Site") %>% 
+  select(-RI, -RT_s) %>% 
+  left_join(tm_comp) %>% 
+  mutate(fileid = as.character(as.numeric(gsub("BR|_.", "", variable)))) %>% 
+  group_by(Site, variable, Group, fileid) %>% 
+  summarise(value = sum(value), .groups = "drop")
+
+
+# merge US (temperate) and Boreal samples
+spect_tb <- rbind(br_spect_humus, tm_spect)
+dim(spect_tb)
 
 # proportion for biproducts (CO2, sulfur comp) and unk
-spect_humus_allprop <- spect_humus %>% 
+spect_allprop <- spect_tb %>% 
   group_by(Site, variable) %>% 
   mutate(prop = value/sum(value)) %>% 
   group_by(Site, Group) %>% 
   summarise(prop = mean(prop))
-filter(spect_humus_allprop, Group  %in% c("co2", "sulfur_comp", "unk"))
+filter(spect_allprop, Group  %in% c("co2", "sulfur_comp", "unk"))
 
-# Calculate prop without biproducts and unk
-spect_humus_prop <- spect_humus %>% 
+
+# Calculate prop without biproducts and unk and merge with Rosinedal
+spect_tb_prop <- spect_tb %>% 
   filter(!(Group %in% c("CO2", "sulfur_comp", "unk"))) %>% 
   mutate(grp = ifelse(Group %in% c("n-diketone", "n-ketone", "n-alkane", "n-alkene", "n-alkanal", "n-FA"), "Long_chain_aliphatic",
                       ifelse(Group %in% c("chlorophyll", "steroid", "vitamin"), "Others", 
                              as.character(Group))),
          grp = gsub("-", "_", grp)) %>% 
-  group_by(fileid, Layer, Site, variable) %>% 
+  group_by(fileid, Site, variable) %>% 
   mutate(prop = value/sum(value)) %>% 
-  group_by(fileid, Layer, Site, grp) %>% 
-  summarise(prop = sum(prop)) %>% 
-  ungroup() %>% 
-  spread(grp, prop) %>% 
-  bind_rows(Rosinedal_humus_raw) %>% 
-  left_join(trt_dd) %>% 
-  mutate(Trt  = factor(Trt, 
-                       levels = c("Control", "Fertilised", "N1", 
-                                  "N2", paste0("N", c(3, 6, 12, 50), "kg"))),
-         lcratio = (g_lignin + s_lignin + Phenol)/carbohydrate) 
+  group_by(fileid, Site, grp) %>% 
+  summarise(prop = sum(prop), .groups = "drop") %>% 
+  spread(grp, prop, fill = 0) %>% 
+  mutate(g_lignin = g_lignin + gs_lignin) %>% 
+  select(-gs_lignin) %>% 
+  bind_rows(select(Rosinedal_humus_raw, -Horizon))
+rowSums(select(spect_tb_prop, aromatic:s_lignin))
+
+
+# compute lignin carbohydrate ratios and merge with envrironmental variables
+dim(spect_tb_prop)
+dim(trt_bt_d)
+spect_tb_d <- spect_tb_prop %>%  
+  mutate(lcratio = (g_lignin + s_lignin + Phenol)/carbohydrate,
+         gsratio = g_lignin / s_lignin) %>% 
+  left_join(trt_bt_d) %>%
+  mutate(Site = factor(Site, levels = site_order)) %>% 
+  filter(!(Site %in% c("BR", "KA")))
+
+# Check outliers
+plot(spect_tb_d$lcratio)
+which.max(spect_tb_d$lcratio)
+spect_tb_d[23, ]
+spect_tb_d <- spect_tb_d[-23, ]
 
 
 
 # RDA ---------------------------------------------------------------------
-humus_pyr_sp <- decostand(select(spect_humus_prop, aromatic:s_lignin), method = "hellinger")
-humus_pyr_rda <- rda(humus_pyr_sp ~ treatment * Site + Condition(Site), spect_humus_prop)
-# humus_pyr_rda <- rda(humus_pyr_sp ~ Trt * Site + Condition(Site), spect_humus_prop)
-summary(humus_pyr_rda)
+tb_pyr_sp <- decostand(select(spect_tb_d, aromatic:s_lignin), method = "hellinger")
+tb_pyr_rda <- rda(tb_pyr_sp ~ Treatment * Site + Condition(Site), spect_tb_d)
+summary(tb_pyr_rda)
 
-anova(humus_pyr_rda, strata = spect_humus_prop$Site)
-anova(humus_pyr_rda, strata = spect_humus_prop$Site, by = "margin")
-anova(humus_pyr_rda, strata = spect_humus_prop$Site, by = "axis")
-summary(humus_pyr_rda)
-plot(humus_pyr_rda)
-ordispider(humus_pyr_rda, interaction(spect_humus_prop$Site, spect_humus_prop$Trt), label = TRUE, 
-           cex = .4, col = rep(palette()[1:5], 2))
+anova(tb_pyr_rda, strata = spect_tb_d$Site)
+anova(tb_pyr_rda, strata = spect_tb_d$Site, by = "margin")
+anova(tb_pyr_rda, strata = spect_tb_d$Site, by = "axis")
+summary(tb_pyr_rda)
+plot(tb_pyr_rda)
+ordispider(tb_pyr_rda, interaction(spect_tb_d$Site, spect_tb_d$TrtID), label = TRUE, cex = .4)
 
-humus_rda_pyr_df <- data.frame(scores(humus_pyr_rda, choices = 1, display = "sites", scaling = 3)) %>% 
-  bind_cols(spect_humus_prop) 
 
-humus_rda_pyr_site_p <- ggplot(humus_rda_pyr_df, aes(x = Trt, y = -RDA1))+
+# site scores
+tb_rda_pyr_df <- data.frame(scores(tb_pyr_rda, choices = 1, display = "sites", scaling = 3)) %>% 
+  bind_cols(spect_tb_d) 
+
+tb_rda_pyr_site_p <- ggplot(tb_rda_pyr_df, aes(x = gsub(".*_", "", TrtID), y = -RDA1))+
   geom_hline(yintercept = 0, linetype = "dotted") +
   geom_boxplot(aes(col = Site), outlier.colour = "white", size = .3)+
   geom_jitter(aes(col = Site), width = .1, alpha = .7)+
   scale_color_manual(values = sitecols)+
   facet_grid(. ~ Site, scales = "free_x", space = "free_x")+
-  lims(y = c(-.4, .51)) +
-  labs(x = NULL, y = paste("F/H horizon", get_PCA_axislab(humus_pyr_rda)))+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "none")
+  labs(x = NULL, y = get_PCA_axislab(tb_pyr_rda))+
+  theme(axis.text.x     = element_text(angle = 45, hjust = 1, size = 5),
+        legend.position = "none",
+        strip.text.x = element_text(size = 4))
 
 # Sp score
-pyr_humus_rda_sp   <- data.frame(scores(humus_pyr_rda, choices = 1, display = "species", scaling = 3)) %>% 
+pyr_tb_rda_sp   <- data.frame(scores(tb_pyr_rda, choices = 1, display = "species", scaling = 3)) %>% 
   mutate(pyr_comp = row.names(.),
          pyr_comp = factor(pyr_comp, levels = pyr_comp[order(RDA1)]),
          pyr_comp_ed = mapvalues(pyr_comp, 
@@ -98,11 +148,11 @@ pyr_humus_rda_sp   <- data.frame(scores(humus_pyr_rda, choices = 1, display = "s
                                  c("Aromatic", "Carbohydrate", "G lignin", "Long-chain aliphatic", "N comp.", "Others", "Phenol", "S lignin"))) %>% 
   arrange(RDA1)
 
-humus_rda_pyrsp_p <- ggplot(pyr_humus_rda_sp, aes(x = -1, y = -RDA1, label = pyr_comp_ed)) +
+tb_rda_pyrsp_p <- ggplot(pyr_tb_rda_sp, aes(x = -1, y = -RDA1, label = pyr_comp_ed)) +
   geom_hline(yintercept = 0, linetype = "dotted") +
   geom_vline(xintercept = -1.1) +
   geom_point(aes(x = -1.1), size = 1) +
-  geom_text(hjust  = 0,  size = 4) +
+  geom_text(hjust  = 0,  size = 2) +
   labs(x = NULL, y = NULL) +
   lims(x = c(-1.15, 1.11), y = c(-.4, .51)) +
   science_theme +
@@ -111,61 +161,24 @@ humus_rda_pyrsp_p <- ggplot(pyr_humus_rda_sp, aes(x = -1, y = -RDA1, label = pyr
         axis.text.y = element_blank(), 
         axis.ticks.x = element_blank(), 
         axis.ticks.y = element_blank())
-humus_rda_pyrsp_p
+tb_rda_pyrsp_p
 
-humus_rda_pyr_p <- ggarrange(humus_rda_pyr_site_p, humus_rda_pyrsp_p, ncol = 2, widths = c(2, .9))
-humus_rda_pyr_p
-
-save(humus_rda_pyr_df, pyr_humus_rda_sp, humus_pyr_sp, humus_pyr_rda,
-     file = "Output/Data/Pyr_RDA.RDA")
+tb_rda_pyr_p <- ggarrange(tb_rda_pyr_site_p, tb_rda_pyrsp_p, ncol = 2, widths = c(2, .9))
+tb_rda_pyr_p
+ggsavePP(filename = "Output/Figs/Pyr_RDA_BorealTemperate", tb_rda_pyr_p, 6.5, 3)
 
 
 
 
 # NMDS --------------------------------------------------------------------
 
-humus_pyr_nmds <- metaMDS(humus_pyr_sp, distance = "bray")
-
-pdf(file = "Output/Figs/d13C_analysis/Pyrolysis_NMDS_Hhoriz.pdf", width = 6, height = 6)
-plot(humus_pyr_nmds, main = "Pyrolysis F/H horizon")
+tb_pyr_nmds <- metaMDS(tb_pyr_sp, distance = "euc", try = 50)
+stressplot(tb_pyr_nmds)
+pdf(file = "Output/Figs/Pyr_NMDS_BorealTemperate.pdf", width = 6, height = 6)
+plot(tb_pyr_nmds, main = "Pyrolysis F/H horizon")
 abline(v = 0, h = 0, col = "gray40", lty = 2)
-ordispider(humus_pyr_nmds, paste(spect_humus_prop$Site, spect_humus_prop$Trt, sep = ":"),
-           label = TRUE, 
-           cex = .4, col = c(rep(palette()[1], 5), rep(palette()[2], 2),
-                             rep(palette()[3], 3), rep(palette()[4], 2)))
-plot(envfit(humus_pyr_nmds ~ CN + d13C + wN + wC, spect_humus_prop), col = "purple")
-text(humus_pyr_nmds, display = "species", col = "brown")
+ordispider(tb_pyr_nmds, spect_tb_d$TrtID, label = TRUE, cex = .4)
+plot(envfit(tb_pyr_nmds ~ CNratio + d13C + wN + wC, spect_tb_d), col = "purple")
+text(tb_pyr_nmds, display = "species", col = "brown")
 dev.off()
 
-
-
-# d13C --------------------------------------------------------------------
-
-humus_pyr_rda_13c <- rda(humus_pyr_sp ~ d13C + wN + Condition(Site), spect_humus_prop)
-anova(humus_pyr_rda_13c, by = "margin")
-
-pdf(file = "Output/Figs/d13C_analysis/Pyrolysis_RDA_Hhoriz_d13C_wN.pdf", width = 6, height = 6)
-plot(humus_pyr_rda_13c, scaling = 3, main = "Pyrolysis (F/H horizon) RDA vs. d13C, wN")
-text(humus_pyr_rda_13c, display = "species", col = "brown", scaling = 3)
-dev.off()
-
-# Picea abies
-humus_PA <- filter(spect_humus_prop, Vegetation == "Picea abies")
-humus_PA_sp <-decostand(select(humus_PA, aromatic:s_lignin), method = "hellinger")
-humus_pyr_rda_13c_pa <- rda(humus_PA_sp ~ d13C + wN + Condition(Site), humus_PA)
-anova(humus_pyr_rda_13c_pa)
-anova(humus_pyr_rda_13c_pa, by = "axis")
-
-pdf(file = "Output/Figs/d13C_analysis/Pyrolysis_RDA_Hhoriz_Pabies_d13C_wN.pdf", width = 6, height = 6)
-plot(humus_pyr_rda_13c_pa, scaling = 3, main = "Pyrolysis (F/H horizon, Picea abies) RDA vs. d13C, wN")
-dev.off()
-
-# Pynus sylvestris
-humus_PS <- filter(spect_humus_prop, Vegetation == "Pynus sylvestris")
-humus_PA_sp <-decostand(select(humus_PS, aromatic:s_lignin), method = "hellinger")
-humus_pyr_rda_13c_ps <- rda(humus_PA_sp ~ d13C + wN +  Condition(Site), humus_PS)
-anova(humus_pyr_rda_13c_ps)
-anova(humus_pyr_rda_13c_ps, by = "axis")
-pdf(file = "Output/Figs/d13C_analysis/Pyrolysis_RDA_Hhoriz_Psylvestris_d13C_wN.pdf", width = 6, height = 6)
-plot(humus_pyr_rda_13c_ps, scaling = 3, main = "Pyrolysis (F/H horizon, Pynus sylvestris) RDA vs. d13C, wN")
-dev.off()
