@@ -110,125 +110,13 @@ trt_bt_d <- trt_br_d %>%
 # Multivariate analysis ---------------------------------------------------
 
 
-source("R/analysys_litter.R")
+# source("R/analysys_litter.R")
+# this was previously analysed but now data objects were modified and so the
+# script needs updating to be run.
+
+# load, process and alysed the samples from the humus together with the US samples
 source("R/analysis_humus.R")
 
 
-# Merge RDA figures
-rda_pyr_p <- ggarrange(litter_rda_pyr_site_p + 
-                         theme(axis.text.x = element_blank(),
-                               plot.margin = margin(t = .2, r = 0, b = .5, l = .5, unit = "line")),
-                       litter_rda_pyrsp_p +
-                         theme(plot.margin = margin(t = .2, r = 0, b = .5, l = .2, unit = "line")),
-                       humus_rda_pyr_site_p + 
-                         theme(strip.background = element_blank(),
-                               strip.text = element_blank(),
-                               plot.margin = margin(t = 0, r = 0, b = .5, l = .5, unit = "line")),  
-                       humus_rda_pyrsp_p +
-                         theme(plot.margin = margin(t = 0, r = 0, b = .5, l = .2, unit = "line")), 
-                       ncol = 2, widths = c(2, .9), nrow = 2, heights = c(1, 1))
-rda_pyr_p
-ggsavePP(filename = "Output/Figs/RDA_Pyrolysis_HumusLitter", rda_pyr_p, 
-       width = 8, height= 5)
 
 
-
-# Lignin:Carbohydrate ratios ----------------------------------------------
-
-lcr_litter <- spect_litter_prop %>% 
-  mutate(lcr = g_lignin/carbohydrate)
-names(lcr_litter)
-
-
-ggplot(lcr_litter, aes(x = Trt, y = N_comp))+
-  geom_boxplot(aes(col = Site))+
-  facet_grid(. ~ Site, scales = "free_x", space = "free_x")
-
-
-lcr_litter_cntr <- lcr_litter %>% 
-  filter(treatment == "Control") %>% 
-  group_by(Site) %>% 
-  summarise(lcr_cntr = mean(lcr),
-            CN_cntr = mean(CN)) %>% 
-  ungroup()
-
-lcr_litter_fert <- lcr_litter %>% 
-  filter(treatment == "Fertilised") %>% 
-  left_join(lcr_litter_cntr) %>% 
-  mutate(logRR = log(lcr/lcr_cntr))
-
-ggplot(lcr_litter_fert, aes(x = log(Total_N), y = logRR))+
-  geom_hline(yintercept = 0, linetype = "dotted")+
-  geom_boxplot(aes(col = Site, group = Total_N))
-
-ggplot(lcr_litter_fert, aes(x = Duration, y = logRR))+
-  geom_hline(yintercept = 0, linetype = "dotted")+
-  geom_boxplot(aes(col = Site, group = Duration))
-
-lcr_humus <- spect_humus_prop %>% 
-  mutate(lcr = g_lignin/carbohydrate)
-ggplot(lcr_humus, aes(x = Trt, y = lcr))+
-  geom_boxplot(aes(col = Site))+
-  facet_grid(. ~ Site, scales = "free_x", space = "free_x")
-
-ggplot(lcr_humus, aes(x = Trt, y = N_comp))+
-  geom_boxplot(aes(col = Site))+
-  facet_grid(. ~ Site, scales = "free_x", space = "free_x")
-
-
-lcr_humus_cntr <- lcr_humus %>% 
-  filter(treatment == "Control") %>% 
-  group_by(Site) %>% 
-  summarise(lcr_cntr = mean(lcr),
-            CN_cntr = mean(CN)) %>% 
-  ungroup()
-
-lcr_humus_fert <- lcr_humus %>% 
-  filter(treatment == "Fertilised") %>% 
-  left_join(lcr_humus_cntr) %>% 
-  mutate(logRR = log(lcr/lcr_cntr))
-
-ggplot(lcr_humus_fert, aes(x = log(Total_N), y = logRR))+
-  geom_hline(yintercept = 0, linetype = "dotted")+
-  geom_boxplot(aes(col = Site, group = Total_N))
-
-
-lcr_full <- bind_rows(lcr_litter_fert, lcr_humus_fert) %>% 
-  mutate(layer2 = mapvalues(Layer, c("Humus", "Litter"), c("F/H horizon", "L horizon")),
-         Layer2 = factor(layer2, levels = c("L horizon", "F/H horizon")))
-lcr_fig <- ggplot(lcr_full, aes(x = Total_N, y = logRR))+
-  geom_hline(yintercept = 0, linetype = "dotted")+
-  geom_boxplot(aes(col = Site, group = Total_N), size = .3)+
-  facet_grid(Layer2 ~ .)+
-  scale_color_manual(values = sitecols)+
-  labs(x = "Total added N (kg)", y = "log RR of ligin:carbohydrate")+
-  theme(legend.position = "none")
-ggsavePP("Output/Figs/lignin_carbohydrate_ratio", lcr_fig, width = 6, height = 6)
-
-
-cn_all <- ggplot(lcr_full, aes(x = Total_N, y = CN))+
-  geom_hline(aes(yintercept = CN_cntr, col = Site), alpha = .7)+
-  geom_boxplot(aes(col = Site, group = Total_N))+
-  facet_grid(Layer2 ~ .)+
-  scale_color_manual(values = sitecols)+
-  labs(x = "Total added N (kg)", y = "C:N ratio")
-ggsavePP("Output/Figs/CNratio_totalN", cn_all, width = 6, height = 4)
-
-
-lc_all <- rbind(lcr_humus, lcr_litter) %>% 
-  mutate(Horizon = ifelse(Layer == "Humus", "F/H horizon", "L horizon"),
-         Horizon = factor(Horizon, levels = c("L horizon", "F/H horizon"))) %>% 
-  group_by(Horizon, Site, Trt) %>% 
-  summarise_at(.vars = vars(lcr), .funs = list(M = mean, SE = se, N = get_n))
-
-lcratio_p <- ggplot(lc_all, aes(x = Trt, y = M))+
-  geom_bar(aes(fill = Site), stat = "identity")+
-  geom_errorbar(aes(ymin = M - SE, ymax = M + SE), width = .2, size = .5)+
-  facet_grid(Horizon ~ Site, scales = "free", space = "free_x")+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "none")+
-  labs(x = NULL, y = "Lignin:Carbohydrate ratio")+
-  scale_fill_manual(values = sitecols)
-lcratio_p
-ggsavePP(filename = "Output/Figs/LC_ratio_bySite", width = 6, height = 6,
-         plot = lcratio_p)
