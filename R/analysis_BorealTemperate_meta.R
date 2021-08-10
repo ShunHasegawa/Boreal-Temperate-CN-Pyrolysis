@@ -59,7 +59,7 @@ rom <- escalc(measure = "ROM",
          sdn = 1:n()) %>% 
   # size will be use for plotting; the larger, the smaller variance
   mutate(biom_col = ifelse(Biome == "Boreal", "gray20", "red"),
-         wi = 1/sqrt(rom$vi),
+         wi = 1/sqrt(vi),
          size = .5 + 3 * (wi - min(wi))/(max(wi) - min(wi)))
 
 res <- rma(yi, vi, data = rom)
@@ -469,3 +469,24 @@ tmr9  <- rma.mv(yi, vi, data = rom, mod = ~ N_year,                  subset = Bi
 tmr10 <- rma.mv(yi, vi, data = rom, mod = ~ N_rate,                  subset = Biome == "Temperate")
 tmr11 <- rma.mv(yi, vi, data = rom, mod = ~ CN_cnt,                subset = Biome == "Temperate")
 AICc(tmr1, tmr2, tmr3, tmr4, tmr5, tmr6, tmr7, tmr8, tmr9, tmr10, tmr11)
+
+
+rom_us <- filter(rom, Biome == "Temperate")
+names(rom_us)
+tmr_mm0 <- rma.mv(yi, vi, data = rom_us)
+forest(tmr_mm0, slab = rom_us$Site)
+tmr_mm1 <- rma.mv(yi, vi, data = rom_us, mod = ~ MAT)
+tmr_mm2 <- rma.mv(yi, vi, data = rom_us, mod = ~ N_deposition)
+tmr_mm3 <- rma.mv(yi, vi, data = rom_us, mod = ~ N_added)
+tmr_mm4 <- rma.mv(yi, vi, data = rom_us, mod = ~ CNratio)
+tmr_mm5 <- rma.mv(yi, vi, data = rom_us, mod = ~ CN_cnt)
+tmr_mm6 <- rma.mv(yi, vi, data = rom_us, mod = ~ Vegetation)
+tmr_mm7 <- rma.mv(yi, vi, data = rom_us, mod = ~ CN_lrr)
+tmr_mm8 <- rma.mv(yi, vi, data = rom_us, mod = ~ MAP)
+tmr_mm9 <- rma.mv(yi, vi, data = rom_us, mod = ~ Latitude)
+tmr_mm10 <- rma.mv(yi, vi, data = rom_us, mod = ~ N_year)
+tmr_mm11 <- rma.mv(yi, vi, data = rom_us, mod = ~ N_rate)
+tmr_mm12 <- rma.mv(yi, vi, data = rom_us, mod = ~ Longitude)
+tmr_mm13 <- rma.mv(yi, vi, data = rom_us, mod = ~ Fertiliser)
+AICc(tmr_mm0, tmr_mm1, tmr_mm2, tmr_mm3, tmr_mm4, tmr_mm5, tmr_mm6, tmr_mm7, 
+     tmr_mm8, tmr_mm9, tmr_mm10, tmr_mm11, tmr_mm12, tmr_mm13)
