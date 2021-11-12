@@ -232,3 +232,31 @@ source("R/analysis_BorealTemperate_LM.R")
 # meta analysis
 source("R/analysis_BorealTemperate_meta.R") 
 
+
+
+
+# List of all compounds and group -------------------------------------------------
+
+Ros_comp_all <- ldply(list(Litter = litter_spec_all, Humus = humus_spec_all), .id = "Horizon") %>% 
+  select(comp, grp) %>% 
+  distinct() %>% 
+  rename(Comp = comp, Group = grp)
+
+comp_list <- ldply(c('BR' = "Data/US_Soil/Compound/Compound_US_BR.csv",
+                     'CA' = "Data/US_Soil/Compound/Compound_US_CA.csv",
+                     'FE' = "Data/US_Soil/Compound/Compound_US_FE.csv",
+                     'HF' = "Data/US_Soil/Compound/Compound_US_HF.csv",
+                     'KA' = "Data/US_Soil/Compound/Compound_US_KA.csv",
+                     'ME' = "Data/US_Soil/Compound/Compound_US_ME.csv",
+                     'NH' = "Data/US_Soil/Compound/Compound_US_NH.csv",
+                     'Aheden'      = "Data/Compound_humus_Aheden.csv",
+                     'Svartberget' = "Data/Compound_humus_Svartberget.csv",
+                     'Flakaliden'  = "Data/Compound_humus_Flakaliden.csv"),
+                   read.csv, .id = "Site") %>% 
+  select(Comp, Group) %>% 
+  bind_rows(Ros_comp_all) %>% 
+  distinct() %>% 
+  arrange(Group, Comp)
+
+write.csv(comp_list, "Output/Tables/All_Pyr_Compound_list.csv", row.names = FALSE)
+
