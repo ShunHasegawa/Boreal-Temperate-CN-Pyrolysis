@@ -274,6 +274,49 @@ ggsavePP("Output/Figs/metaanalysis_model2", mm17_p, 6.5, 3.5)
 
 
 
+# without random factor + Biome ---------------------------------------------------
+mb0 <- rma.mv(yi, vi, data = rom)
+
+# . CN_cnt, N_year, N_rate, CN_lrr 
+mb1 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_year + N_rate)
+mb2 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_year)
+AICc(mb0, mb1, mb2)
+summary(mb2)
+
+# figure with predicted values
+range(rom$N_year)
+unique(rom$Biome)
+coef(summary(mb2))
+mb2_pred_bim <- predict(mb2, cbind(c(0, 1), mean(rom$N_year)), addx = TRUE) %>% 
+  data.frame(.) %>%
+  rename(yi = pred,
+         N_year = X.N_year) %>% 
+  mutate(Biome = ifelse(X.BiomeTemperate == 0, "Boreal", "Temperate"))
+mb2_pred_nyr <- predict(mb2, cbind(c(0, 1), rep(seq(7, 33, length.out = 100), each = 2)), addx = TRUE) %>% 
+  data.frame(.) %>%
+  rename(yi = pred,
+         N_year = X.N_year) %>% 
+  mutate(Biome = ifelse(X.BiomeTemperate == 0, "Boreal", "Temperate"))
+
+mb2_Nyr_p <- ggplot(rom, aes(x = N_year, y = yi))+
+  geom_hline(yintercept = 0, col = "gray30", linetype = "dashed")+
+  geom_line(aes(col = Biome), data = mb2_pred_nyr)+
+  geom_line(data = mb2_pred_nyr, aes(y = ci.lb, col = Biome), linetype = "dashed")+
+  geom_line(data = mb2_pred_nyr, aes(y = ci.ub, col = Biome), linetype = "dashed")+
+  geom_point(aes(fill = Biome, size = wi), alpha = .5, shape = 21)+
+  scale_fill_manual(values = c("black", "red"))+
+  scale_color_manual(values = c("black", "red"))+
+  scale_size_continuous(range = c(1, 10), guide = "none")+
+  ylim(-.3, 1.1)+
+  theme(legend.position = "none")+
+  labs(x = "N-added period (year)", y = "Log RR of lignin:carbohydrate")+
+  theme(legend.position   = c(.2, .85),
+        legend.title      = element_blank(),
+        legend.background = element_blank())
+
+ggsavePP("Output/Figs/metaanalysis_biome_Nyr", mb2_Nyr_p, 3.5, 3.5)
+
+
 # By Biome ----------------------------------------------------------------
 res_bm <- rma.mv(yi, vi, data = rom, mods = ~ Biome - 1, random = ~ 1|Site)
 summary(res_bm)
