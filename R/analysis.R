@@ -1,7 +1,7 @@
 source("R/packages.R")
 source("R/functions.R")
 source("R/generic_functions.R")
-sitecols <- c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#999914", "#a65628", "#f781bf", "#999999")
+sitecols <- c("#e41a1c", "#377eb8", "#4daf4a", "#cab2d6", "#984ea3", "#ff7f00", "#999914", "#a65628", "#f781bf", "#999999")
 
 
 # Load data ---------------------------------------------------------------
@@ -54,21 +54,44 @@ xtabs(~ Treatment + Horizon, Rosinedal_env)
 
 
 # Pyr sample id for the other boreal sites
-fileid_d <- read.csv("Data/Pyrolysis_sample_list.csv", sep = ";") %>% 
+fileid_d <- read.csv("Data/Pyrolysis_sample_list.csv") %>% 
   rename(Horizon = Layer) %>% 
   mutate_all(.funs = list(as.character)) %>% 
   select(Horizon, fileid, Sample_ID) 
 
-# env variables
-load("Data/IRMS.RData")
+
+# . env variables ---------------------------------------------------------
+
+# Rosinedal OF
+load("Data/IRMS_RosinedalOF_2019_2020.RData") 
+ro_irms20_d <- IRMS_raw_d %>% 
+  filter(Year == 2020) %>% 
+  mutate(Horizon = mapvalues(Horizon, c("FH", "L"), c("Humus", "Litter")))
+RosinedalOF_env2020 <- read.csv("Data/Pyrolysis_sample_list_RosinedalOF2020.csv") %>% 
+  rename(plot = Plot,
+         fileid = ID) %>% 
+  mutate(fileid = as.character(fileid),
+         treatment = substr(plot, 1, 2)) %>% 
+  left_join(ro_irms20_d) %>% 
+  filter(treatment %in% c("FC", "IN")) %>% 
+  mutate(Site      = "RosinedalOF",
+         Treatment = mapvalues(treatment, c("FC", "IN"), c("Control", "Fertilised")),
+         TrtID     = paste(Site, Treatment, sep = "_")) %>% 
+  select(fileid, Site, Horizon, Treatment, TrtID, wN, wC, d15N, d13C)
+some(trt_br_d)
+
+# The other sites from the boreal forests (Åheden, Svartberget, Flakaliden)
+load("Data/IRMS.RData") 
 trt_br_d <- irms_full %>% 
   mutate_if(is.factor, as.character) %>% 
   mutate(Treatment = ifelse(Trt == "Control", "Control", "Fertilised")) %>% 
   rename(Horizon = Layer) %>% 
   left_join(fileid_d) %>% 
-  filter(Site != "Rosinedal_OF") %>%
+  filter(Site != "Rosinedal_OF") %>% # This is from 2019 and not 2020 so remove
   select(fileid, Site, Horizon, Treatment, TrtID, wN, wC, d15N, d13C) %>% 
-  bind_rows(Rosinedal_env)
+  bind_rows(Rosinedal_env) %>% 
+  bind_rows(RosinedalOF_env2020)
+  
   
 # Temperate forests (US samples)
 us_sample_list <- read.csv("Data/US_Pyr_list.csv") %>% 
@@ -84,10 +107,11 @@ trt_tm_d <- read.csv("Data/US_sample_list.csv") %>%
   select(Site, Horizon, fileid, Treatment, TrtID, wC, wN, d15N, d13C)
 
 # merge boreal and tempearte forest site information
-site_order <- c("Aheden", "Flakaliden", "Rosinedal", "Svartberget", "CA", "FE", "HF", "ME", "NH", "BR", "KA")
+site_order <- c("Aheden", "Flakaliden", "Rosinedal", "RosinedalOF", "Svartberget", "CA", "FE", "HF", "ME", "NH", "BR", "KA")
 trt_order  <- c("Aheden_Control", "Aheden_N3kg", "Aheden_N6kg", "Aheden_N12kg", "Aheden_N50kg", 
                 "Flakaliden_Control", "Flakaliden_Fertilised",
                 "Rosinedal_Control" , "Rosinedal_Fertilised", 
+                "RosinedalOF_Control", "RosinedalOF_Fertilised",
                 "Svartberget_Control", "Svartberget_N1", "Svartberget_N2", 
                 "CA_Control", "CA_Fertilised",
                 "FE_Control", "FE_Fertilised",

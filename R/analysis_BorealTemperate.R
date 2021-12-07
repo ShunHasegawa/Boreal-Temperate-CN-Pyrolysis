@@ -1,11 +1,36 @@
 
 # Boreal forest -----------------------------------------------------------
 
+
+# . Rosinedal OF ----------------------------------------------------------
+
+ro_sample_humus <- RosinedalOF_env2020 %>% 
+  filter(Horizon == "Humus") %>%  
+  select(fileid) %>% 
+  .[, 1]
+
+ro_list <- read.csv("Data/Pyrolysis_sample_list_RosinedalOF2020.csv")
+ro_comp <- read.csv("Data/Compound_all_RosinedalOF2020.csv") %>% 
+  mutate(Site = "RosinedalOF") %>% 
+  select(Site, Window, Group)
+ro_spect <- read.csv("Data/Spectra_all_RosinedalOF2020.csv") %>% 
+  pivot_longer(cols = starts_with("X"), names_to = "variable", values_to = "value") %>% 
+  mutate(Site = "RosinedalOF") %>% 
+  select(-RT_s) %>% 
+  left_join(ro_comp) %>% 
+  mutate(fileid = as.character(as.numeric(gsub("X|_.", "", variable))),
+         Group = mapvalues(Group, "phenol_comp", "Phenol")) %>% 
+  group_by(Site, variable, Group, fileid) %>% 
+  summarise(value = sum(value), .groups = "drop")
+ro_spect_humus <- filter(ro_spect, fileid %in% ro_sample_humus)
+
+
+
+# .  Svartberget, Aheden, Flakaliden —humus— ------------------------------
+
 # NOTE!! X273_1 and X268_1 should be checked if they are the same sample (but
 # more quantity) as X273 and X268, respectively. There is a small chance that I
 # have messed up the order and labeled wrongly.....
-
-# Svartberget, Aheden, Flakaliden —humus—
 br_comp_humus <- ldply(c('Aheden'      = "Data/Compound_humus_Aheden.csv",
                          'Svartberget' = "Data/Compound_humus_Svartberget.csv",
                          'Flakaliden'  = "Data/Compound_humus_Flakaliden.csv"),
@@ -28,7 +53,10 @@ br_spect_humus <- ldply(c('Aheden'      = "Data/Spectra_humus_Aheden.csv",
   mutate(variable = mapvalues(variable, "X273_1", "X273")) %>% 
   mutate(fileid = as.character(as.numeric(gsub("X", "", variable)))) %>% 
   group_by(Site, variable, Group, fileid) %>% 
-  summarise(value = sum(value), .groups = "drop")
+  summarise(value = sum(value), .groups = "drop") %>% 
+  bind_rows(ro_spect_humus)
+
+
 
 
 # US samples --------------------------------------------------------------
@@ -103,6 +131,7 @@ spect_tb_d <- spect_tb_prop %>%
   mutate(Site = factor(Site, levels = site_order)) %>% 
   filter(!(Site %in% c("BR", "KA")))
 
+
 # Check outliers
 plot(spect_tb_d$lcratio)
 which.max(spect_tb_d$lcratio)
@@ -131,14 +160,14 @@ tb_rda_pyr_df <- data.frame(scores(tb_pyr_rda, choices = 1, display = "sites", s
 tb_rda_pyr_site_p <- ggplot(tb_rda_pyr_df, aes(x = TrtID, y = -RDA1))+
   geom_hline(yintercept = 0, linetype = "dotted") +
   geom_boxplot(aes(col = Site), outlier.colour = "white", size = .3)+
-  geom_jitter(aes(col = Site), width = .1, alpha = .7)+
+  geom_jitter(aes(col = Site), width = .1, alpha = .7, size = 1)+
   scale_color_manual(values = sitecols)+
   facet_grid(. ~ Site, scales = "free_x", space = "free_x")+
   labs(x = NULL, y = get_PCA_axislab(tb_pyr_rda))+
-  lims(y = c(-.46, .44))+
+  lims(y = c(-.46, .46))+
   theme(axis.text.x     = element_text(angle = 45, hjust = 1, size = 5),
         legend.position = "none",
-        strip.text.x = element_text(size = 4))
+        strip.text.x = element_text(size = 3))
 
 # Sp score
 pyr_tb_rda_sp   <- data.frame(scores(tb_pyr_rda, choices = 1, display = "species", scaling = 3)) %>% 
@@ -155,7 +184,7 @@ tb_rda_pyrsp_p <- ggplot(pyr_tb_rda_sp, aes(x = -1, y = -RDA1, label = pyr_comp_
   geom_point(aes(x = -1.1), size = 1) +
   geom_text(hjust  = 0,  size = 2) +
   labs(x = NULL, y = NULL) +
-  lims(x = c(-1.15, 1.11), y = c(-.46, .45)) +
+  lims(x = c(-1.15, 1.11), y = c(-.46, .46)) +
   science_theme +
   theme(panel.border = element_blank(), 
         axis.text.x = element_blank(), 

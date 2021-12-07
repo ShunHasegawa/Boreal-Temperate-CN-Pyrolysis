@@ -25,7 +25,7 @@ lcmean_f <- lcmean_d1 %>%
 # treatment df
 trt_bt_smmry_d <- trt_bt_d %>%  
   group_by(Site, Treatment, TrtID) %>%
-  summarise_at(.vars = vars(CNratio), .funs = funs(mean)) %>% 
+  summarise_at(.vars = vars(CNratio), .funs = list(mean)) %>% 
   ungroup()
 trt_bt_smmry_c <- trt_bt_smmry_d %>% 
   filter(Treatment == "Control") %>% 
@@ -121,6 +121,7 @@ AICc(mr0, mr21, mr22, mr23, mr24)
 mr25  <- rma.mv(yi, vi, data = rom, mod = ~ CNratio, random = ~1|Site)
 AICc(mr22, mr25, mr5)
 summary(mr5)
+summary(mr22)
 
 # . N_year, N_rate, CNratio, CN_lrr
 mr26 <- rma.mv(yi, vi, data = rom, mod = ~ N_year + N_rate + CNratio + CN_lrr, random = ~1|Site)
@@ -140,6 +141,9 @@ mr36  <- rma.mv(yi, vi, data = rom, mod = ~ CNratio,  random = ~1|Site)
 AICc(mr0, mr31, mr32, mr33, mr34, mr35, mr36)
 
 # . Best model
+AICc(mr0, mr22, mr5)
+summary(mr0)
+summary(mr22)
 summary(mr5)
 
 
@@ -166,7 +170,7 @@ summary(mm6)
 mm9  <- rma.mv(yi, vi, data = rom, mod = ~ N_year)
 mm10 <- rma.mv(yi, vi, data = rom, mod = ~ CN_cnt)
 AICc(mm6, mm9, mm10)
-summary(mm6)
+summary(mm10)
 
 # . CN_cnt, N_added, CN_lrr 
 mm11 <- rma.mv(yi, vi, data = rom, mod = ~ CN_cnt + N_added + CN_lrr)
@@ -174,147 +178,140 @@ mm12 <- rma.mv(yi, vi, data = rom, mod = ~ CN_cnt + N_added)
 mm13 <- rma.mv(yi, vi, data = rom, mod = ~ CN_cnt + CN_lrr)
 mm14 <- rma.mv(yi, vi, data = rom, mod = ~ N_added + CN_lrr)
 AICc(mm0, mm11, mm12, mm13, mm14)
-summary(mm12)
+summary(mm11)
 
-mm15 <- rma.mv(yi, vi, data = rom, mod = ~ CN_cnt)
-mm16 <- rma.mv(yi, vi, data = rom, mod = ~ N_added)
-AICc(mm12, mm15, mm16)
-summary(mm15)
+mm15 <- rma.mv(yi, vi, data = rom, mod = ~ CN_cnt + N_added)
+mm16 <- rma.mv(yi, vi, data = rom, mod = ~ CN_cnt +           CN_lrr)
+mm17 <- rma.mv(yi, vi, data = rom, mod = ~          N_added + CN_lrr)
+AICc(mm11, mm15, mm16, mm17)
+summary(mm11)
 
-AICc(mm6, mm15)
-summary(mm6)
+
 
 # figure with predicted values
 range(rom$CN_cnt)
-range(rom$N_year)
-mm6_pred_cnc <- predict(mm6, cbind(seq(16, 48, length.out = 100), mean(rom$N_year)), addx = TRUE) %>% 
+mm10_pred_cnc <- predict(mm10, seq(16, 48, length.out = 100), addx = TRUE) %>% 
   data.frame(.) %>%
   rename(yi = pred,
          CN_cnt = X.CN_cnt)
-mm6_pred_nyr <- predict(mm6, cbind(mean(rom$CN_cnt), seq(7, 33, length.out = 100)), addx = TRUE) %>% 
-  data.frame(.) %>%
-  rename(yi = pred,
-         N_year = X.N_year)
 
-mm6_CNcntrl_p <- ggplot(rom, aes(x = CN_cnt, y = yi))+
+mm10_CNcntrl_p <- ggplot(rom, aes(x = CN_cnt, y = yi))+
   geom_hline(yintercept = 0, col = "gray30", linetype = "dashed")+
   geom_point(aes(fill = Biome, size = wi), col = "black", alpha = .7, shape = 21)+
-  geom_line(data = mm6_pred_cnc, col = "blue")+
-  geom_line(data = mm6_pred_cnc, aes(y = ci.lb), col = "blue", linetype = "dotted")+
-  geom_line(data = mm6_pred_cnc, aes(y = ci.ub), col = "blue", linetype = "dotted")+
+  geom_line(data = mm10_pred_cnc, col = "blue")+
+  geom_line(data = mm10_pred_cnc, aes(y = ci.lb), col = "blue", linetype = "dotted")+
+  geom_line(data = mm10_pred_cnc, aes(y = ci.ub), col = "blue", linetype = "dotted")+
   scale_fill_manual(values = c("black", "red"))+
-  scale_size_continuous(range = c(1, 10), guide = FALSE)+
+  scale_size_continuous(range = c(1, 10), guide = "none")+
   labs(x = "C:N ratio at control", y = "Log RR of lignin:carbohydrate")+
   theme(legend.position   = c(.2, .85),
         legend.title      = element_blank(),
         legend.background = element_blank())
 
-mm6_Nyr_p <- ggplot(rom, aes(x = N_year, y = yi))+
-  geom_hline(yintercept = 0, col = "gray30", linetype = "dashed")+
-  geom_point(aes(fill = Biome, size = wi), col = "black", alpha = .7, shape = 21)+
-  geom_line(data = mm6_pred_nyr, col = "blue")+
-  geom_line(data = mm6_pred_nyr, aes(y = ci.lb), col = "blue", linetype = "dotted")+
-  geom_line(data = mm6_pred_nyr, aes(y = ci.ub), col = "blue", linetype = "dotted")+
-  scale_fill_manual(values = c("black", "red"))+
-  scale_size_continuous(range = c(1, 10), guide = FALSE)+
-  theme(legend.position = "none")+
-  labs(x = "N-added period (year)", y = NULL)
-
-mm6_p <- cbind(ggplotGrob(mm6_CNcntrl_p), 
-               ggplotGrob(mm6_Nyr_p))  
-# grid.newpage()
-# grid.draw(mm6_p)
-ggsavePP("Output/Figs/metaanalysis_model1", mm6_p, 6.5, 3.5)
+ggsavePP("Output/Figs/metaanalysis_model3", mm10_CNcntrl_p, 6.5, 3.5)
 
 
 # Alternative model
-mm17 <- rma.mv(yi, vi, data = rom, mod = ~ CNratio + N_added)
-AICc(mm6, mm17)
+mm18 <- rma.mv(yi, vi, data = rom, mod = ~ CNratio + N_added)
+mm19 <- rma.mv(yi, vi, data = rom, mod = ~ CNratio)
+mm20 <- rma.mv(yi, vi, data = rom, mod = ~ N_added)
+AICc(mm10, mm18, mm19, mm20)
 range(rom$CNratio)
 range(rom$N_added)
-mm17_pred_cnr <- predict(mm17, cbind(seq(18, 49, length.out = 100), mean(rom$N_added)), addx = TRUE) %>% 
+mm18_pred_cnr <- predict(mm18, cbind(seq(18, 49, length.out = 100), mean(rom$N_added)), addx = TRUE) %>% 
   data.frame(.) %>%
   rename(yi      = pred,
          CNratio = X.CNratio)
-mm17_pred_nad <- predict(mm17, cbind(mean(rom$CNratio), seq(48, 2000, length.out = 100)), addx = TRUE) %>% 
+mm18_pred_nad <- predict(mm18, cbind(mean(rom$CNratio), seq(48, 2000, length.out = 100)), addx = TRUE) %>% 
   data.frame(.) %>%
   rename(yi      = pred,
          N_added = X.N_added)
 
-mm17_cnr_p <- ggplot(rom, aes(x = CNratio, y = yi))+
+mm18_cnr_p <- ggplot(rom, aes(x = CNratio, y = yi))+
   geom_hline(yintercept = 0, col = "gray30", linetype = "dashed")+
   geom_point(aes(fill = Biome, size = wi), col = "black", alpha = .7, shape = 21)+
-  geom_line(data = mm17_pred_cnr, col = "blue")+
-  geom_line(data = mm17_pred_cnr, aes(y = ci.lb), col = "blue", linetype = "dotted")+
-  geom_line(data = mm17_pred_cnr, aes(y = ci.ub), col = "blue", linetype = "dotted")+
+  geom_line(data = mm18_pred_cnr, col = "blue")+
+  geom_line(data = mm18_pred_cnr, aes(y = ci.lb), col = "blue", linetype = "dotted")+
+  geom_line(data = mm18_pred_cnr, aes(y = ci.ub), col = "blue", linetype = "dotted")+
   scale_fill_manual(values = c("black", "red"))+
-  scale_size_continuous(range = c(1, 10), guide = FALSE)+
+  scale_size_continuous(range = c(1, 10), guide = "none")+
   labs(x = "C:N ratio", y = "Log RR of lignin:carbohydrate")+
   theme(legend.position   = c(.2, .85),
         legend.title      = element_blank(),
         legend.background = element_blank())
 
-mm17_nad_p <- ggplot(rom, aes(x = N_added, y = yi))+
+mm18_nad_p <- ggplot(rom, aes(x = N_added, y = yi))+
   geom_hline(yintercept = 0, col = "gray30", linetype = "dashed")+
   geom_point(aes(fill = Biome, size = wi), col = "black", alpha = .7, shape = 21)+
-  geom_line(data = mm17_pred_nad, col = "blue")+
-  geom_line(data = mm17_pred_nad, aes(y = ci.lb), col = "blue", linetype = "dotted")+
-  geom_line(data = mm17_pred_nad, aes(y = ci.ub), col = "blue", linetype = "dotted")+
+  geom_line(data = mm18_pred_nad, col = "blue")+
+  geom_line(data = mm18_pred_nad, aes(y = ci.lb), col = "blue", linetype = "dotted")+
+  geom_line(data = mm18_pred_nad, aes(y = ci.ub), col = "blue", linetype = "dotted")+
   scale_fill_manual(values = c("black", "red"))+
-  scale_size_continuous(range = c(1, 10), guide = FALSE)+
+  scale_size_continuous(range = c(1, 10), guide = "none")+
   theme(legend.position = "none")+
   labs(x = "Total added N (kg ha-1)", y = NULL)
 
-mm17_p <- cbind(ggplotGrob(mm17_cnr_p), 
-                ggplotGrob(mm17_nad_p))  
+mm18_p <- cbind(ggplotGrob(mm18_cnr_p), 
+                ggplotGrob(mm18_nad_p))  
 # grid.newpage()
-# grid.draw(mm17_p)
-ggsavePP("Output/Figs/metaanalysis_model2", mm17_p, 6.5, 3.5)
+# grid.draw(mm18_p)
+ggsavePP("Output/Figs/metaanalysis_model4", mm18_p, 6.5, 3.5)
 
 
 
 
 # without random factor + Biome ---------------------------------------------------
+
+
 mb0 <- rma.mv(yi, vi, data = rom)
 
 # . CN_cnt, N_year, N_rate, CN_lrr 
 mb1 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_year + N_rate)
-mb2 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_year)
-AICc(mb0, mb1, mb2)
+mb2 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_year         )
+mb3 <- rma.mv(yi, vi, data = rom, mod = ~         N_year + N_rate)
+mb4 <- rma.mv(yi, vi, data = rom, mod = ~ Biome          + N_rate)
+mb5 <- rma.mv(yi, vi, data = rom, mod = ~ Biome          + N_rate)
+AICc(mb0, mb1, mb2, mb3, mb4, mb5)
 summary(mb2)
 
-# figure with predicted values
-range(rom$N_year)
-unique(rom$Biome)
-coef(summary(mb2))
-mb2_pred_bim <- predict(mb2, cbind(c(0, 1), mean(rom$N_year)), addx = TRUE) %>% 
-  data.frame(.) %>%
-  rename(yi = pred,
-         N_year = X.N_year) %>% 
-  mutate(Biome = ifelse(X.BiomeTemperate == 0, "Boreal", "Temperate"))
-mb2_pred_nyr <- predict(mb2, cbind(c(0, 1), rep(seq(7, 33, length.out = 100), each = 2)), addx = TRUE) %>% 
-  data.frame(.) %>%
-  rename(yi = pred,
-         N_year = X.N_year) %>% 
-  mutate(Biome = ifelse(X.BiomeTemperate == 0, "Boreal", "Temperate"))
+mb6 <- rma.mv(yi, vi, data = rom, mod = ~ Biome)
+mb7 <- rma.mv(yi, vi, data = rom, mod = ~ N_year)
+AICc(mb2, mb6, mb7)
+summary(mb6)
 
-mb2_Nyr_p <- ggplot(rom, aes(x = N_year, y = yi))+
-  geom_hline(yintercept = 0, col = "gray30", linetype = "dashed")+
-  geom_line(aes(col = Biome), data = mb2_pred_nyr)+
-  geom_line(data = mb2_pred_nyr, aes(y = ci.lb, col = Biome), linetype = "dashed")+
-  geom_line(data = mb2_pred_nyr, aes(y = ci.ub, col = Biome), linetype = "dashed")+
-  geom_point(aes(fill = Biome, size = wi), alpha = .5, shape = 21)+
-  scale_fill_manual(values = c("black", "red"))+
-  scale_color_manual(values = c("black", "red"))+
-  scale_size_continuous(range = c(1, 10), guide = "none")+
-  ylim(-.3, 1.1)+
-  theme(legend.position = "none")+
-  labs(x = "N-added period (year)", y = "Log RR of lignin:carbohydrate")+
-  theme(legend.position   = c(.2, .85),
-        legend.title      = element_blank(),
-        legend.background = element_blank())
 
-ggsavePP("Output/Figs/metaanalysis_biome_Nyr", mb2_Nyr_p, 3.5, 3.5)
+# # figure with predicted values
+# range(rom$N_year)
+# unique(rom$Biome)
+# coef(summary(mb2))
+# mb2_pred_bim <- predict(mb2, cbind(c(0, 1), mean(rom$N_year)), addx = TRUE) %>% 
+#   data.frame(.) %>%
+#   rename(yi = pred,
+#          N_year = X.N_year) %>% 
+#   mutate(Biome = ifelse(X.BiomeTemperate == 0, "Boreal", "Temperate"))
+# mb2_pred_nyr <- predict(mb2, cbind(c(0, 1), rep(seq(7, 33, length.out = 100), each = 2)), addx = TRUE) %>% 
+#   data.frame(.) %>%
+#   rename(yi = pred,
+#          N_year = X.N_year) %>% 
+#   mutate(Biome = ifelse(X.BiomeTemperate == 0, "Boreal", "Temperate"))
+# 
+# mb2_Nyr_p <- ggplot(rom, aes(x = N_year, y = yi))+
+#   geom_hline(yintercept = 0, col = "gray30", linetype = "dashed")+
+#   geom_line(aes(col = Biome), data = mb2_pred_nyr)+
+#   geom_line(data = mb2_pred_nyr, aes(y = ci.lb, col = Biome), linetype = "dashed")+
+#   geom_line(data = mb2_pred_nyr, aes(y = ci.ub, col = Biome), linetype = "dashed")+
+#   geom_point(aes(fill = Biome, size = wi), alpha = .5, shape = 21)+
+#   scale_fill_manual(values = c("black", "red"))+
+#   scale_color_manual(values = c("black", "red"))+
+#   scale_size_continuous(range = c(1, 10), guide = "none")+
+#   ylim(-.3, 1.1)+
+#   theme(legend.position = "none")+
+#   labs(x = "N-added period (year)", y = "Log RR of lignin:carbohydrate")+
+#   theme(legend.position   = c(.2, .85),
+#         legend.title      = element_blank(),
+#         legend.background = element_blank())
+# 
+# ggsavePP("Output/Figs/metaanalysis_biome_Nyr", mb2_Nyr_p, 3.5, 3.5)
 
 
 # By Biome ----------------------------------------------------------------
@@ -372,9 +369,6 @@ with(res_ft_cfd, forest(x = estimate, sei = se, slab= Fertiliser,
 # By year -----------------------------------------------------------------
 
 plot(yi ~ f_nyr, rom)
-rom %>% 
-  select(Site, Trt, f_nyr, yi) %>% 
-  arrange(f_nyr)
 
 res_nyr <- rma.mv(yi, vi, data = rom, mods = ~ f_nyr - 1, random = ~ 1|Site)
 nyr_N <- rom %>% 
@@ -392,10 +386,6 @@ with(res_nyr_cfd, forest(x = estimate, sei = se, slab= f_nyr,
 # By N rate ---------------------------------------------------------------
 
 plot(yi ~ f_nrt, rom)
-rom %>% 
-  select(Site, Trt, f_nrt) %>% 
-  distinct() %>% 
-  arrange(f_nrt)
 res_nrt <- rma.mv(yi, vi, data = rom, mods = ~ f_nrt - 1, random = ~ 1|Site)
 nrt_N <- rom %>% 
   group_by(f_nrt) %>% 
@@ -432,9 +422,6 @@ with(res_nad_cfd, forest(x = estimate, sei = se, slab= f_nad,
 # By CN ------------------------------------------------
 
 plot(yi ~ f_cnr, rom)
-rom %>% 
-  select(Site, Trt, f_cnr, yi, CN_lrr) %>% 
-  arrange(f_cnr)
 res_cnr <- rma.mv(yi, vi, data = rom, mods = ~ f_cnr -1 , random = ~ 1|Site)
 summary(res_cnr)
 cnr_N <- rom %>% 
@@ -450,9 +437,6 @@ with(res_cnr_cfd, forest(x = estimate, sei = se, slab= f_cnr,
 # By reseponse ratio of CN ------------------------------------------------
 
 plot(yi ~ f_rcn, rom)
-rom %>% 
-  select(Site, Trt, f_rcn, yi, CN_lrr) %>% 
-  arrange(f_rcn)
 res_rcn <- rma.mv(yi, vi, data = rom, mods = ~ f_rcn -1 , random = ~ 1|Site)
 summary(res_rcn)
 rcn_N <- rom %>% 
