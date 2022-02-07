@@ -166,5 +166,40 @@ bt_nad_p <- ggplot(filter(site_dd, Treatment == "Fertilised"), aes(x = N_year, y
   geom_text(aes(label = Site, col = Site, size = N_added))+
   scale_color_manual(values = c(sitecols, "black", "black"), guide = FALSE)+
   labs(x = "N added period (year)", y = "N added rate (kg ha-1 year-1)")+
-  lims(x = c(6, 37))
+  lims(x = c(0, 37))
 ggsavePP("Output/Figs/Environment/Nadd", bt_nad_p, 5, 4)
+
+
+
+# N addition history ------------------------------------------------------
+
+N_hist <- read.csv("Data/History_N_addition.csv") %>% 
+  mutate(Site = factor(Site, level = site_order)) %>% 
+  arrange(Biome, Site_name, Site, TrtID, Year) %>% 
+  group_by(TrtID) %>% 
+  mutate(N_added = cumsum(N_rate)) %>%
+  ungroup()
+
+# stant and end
+N_hist_strt <- N_hist %>% 
+  group_by(TrtID) %>% 
+  filter(Year == min(Year)) 
+
+N_hist_end <- N_hist %>% 
+  group_by(TrtID) %>% 
+  filter(Year == max(Year)) %>% 
+  ungroup() %>% 
+  mutate(site_label = ifelse(Site %in% c("Aheden", "Svartberget"), TrtID, Site_name))
+
+N_hist_p <- ggplot(N_hist, aes(x = Year, y = N_added, col = Site))+
+  geom_step(aes(group = TrtID), direction = "hv")+
+  geom_segment(data = N_hist_strt, aes(xend = Year, y = 0, yend = N_added))+
+  geom_point(data = N_hist_end)+
+  geom_text(data = N_hist_end, aes(label = TrtID, x = 2021), size = 2, hjust = 0)+
+  scale_color_manual(values = sitecols)+
+  scale_x_continuous(breaks = seq(1990, 2020, 10), labels = seq(1990, 2020, 10), limits = c(1987, 2040))+
+  facet_grid(. ~ Biome)+
+  theme(legend.position = "none")+
+  labs(x = NULL, y = expression(Added~N~(kg~ha^'-1')))
+ggsavePP("Output/Figs/N_add_history", N_hist_p, width = 6.5, height = 3.5)
+
