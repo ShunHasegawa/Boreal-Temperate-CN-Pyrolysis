@@ -175,14 +175,14 @@ pyr_tb_rda_sp   <- data.frame(scores(tb_pyr_rda, choices = 1, display = "species
          pyr_comp = factor(pyr_comp, levels = pyr_comp[order(RDA1)]),
          pyr_comp_ed = mapvalues(pyr_comp, 
                                  c("aromatic", "carbohydrate", "g_lignin", "Long_chain_aliphatic", "N_comp", "Others", "Phenol", "s_lignin"),
-                                 c("Aromatic", "Carbohydrate", "G lignin", "Long-chain aliphatic", "N comp.", "Others", "Phenol", "S lignin"))) %>% 
+                                 c("Aromatic", "Carbohydrate", "G lignin", "Long-chain aliphatic", "N comp.", "Others", "Phenolic comp.", "S lignin"))) %>% 
   arrange(RDA1)
 
 tb_rda_pyrsp_p <- ggplot(pyr_tb_rda_sp, aes(x = -1, y = -RDA1, label = pyr_comp_ed)) +
   geom_hline(yintercept = 0, linetype = "dotted") +
   geom_vline(xintercept = -1.1) +
   geom_point(aes(x = -1.1), size = 1) +
-  geom_text(hjust  = 0,  size = 2) +
+  geom_text(hjust  = 0,  size = 2, nudge_y = c(0, 0, .08, .05, .02, 0, 0, 0)) +
   labs(x = NULL, y = NULL) +
   lims(x = c(-1.15, 1.11), y = c(-.46, .46)) +
   science_theme +
@@ -196,6 +196,21 @@ tb_rda_pyrsp_p
 tb_rda_pyr_p <- ggarrange(tb_rda_pyr_site_p, tb_rda_pyrsp_p, ncol = 2, widths = c(2, .9))
 tb_rda_pyr_p
 ggsavePP(filename = "Output/Figs/Pyr_RDA_BorealTemperate", tb_rda_pyr_p, 6.5, 3)
+
+
+
+
+# .  By Biome -------------------------------------------------------------
+
+rda_bybiome_res <- dlply(spect_tb_d, .(Biome), rda_bybiome)
+llply(rda_bybiome_res, function(x) anova(x$model))
+
+# save RDA figs
+l_ply(names(rda_bybiome_res), function(x){
+  p <- rda_bybiome_res[[x]]$fig
+  ggsavePP(filename = paste0("Output/Figs/Pyr_RDA_", x), p, 3, 3)
+})
+
 
 
 # . By Site ---------------------------------------------------------------
