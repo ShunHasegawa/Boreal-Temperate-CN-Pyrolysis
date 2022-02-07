@@ -119,7 +119,7 @@ mr23  <- rma.mv(yi, vi, data = rom, mod = ~ N_added +           CN_lrr, random =
 mr24  <- rma.mv(yi, vi, data = rom, mod = ~           CNratio + CN_lrr, random = ~1|Site)
 AICc(mr0, mr21, mr22, mr23, mr24)
 mr25  <- rma.mv(yi, vi, data = rom, mod = ~ CNratio, random = ~1|Site)
-AICc(mr22, mr25, mr5)
+AICc(mr0, mr22, mr25, mr5)
 summary(mr5)
 summary(mr22)
 
@@ -159,17 +159,17 @@ mm3 <- rma.mv(yi, vi, data = rom, mod = ~ CN_cnt + N_year          + CN_lrr)
 mm4 <- rma.mv(yi, vi, data = rom, mod = ~ CN_cnt          + N_rate + CN_lrr)
 mm5 <- rma.mv(yi, vi, data = rom, mod = ~          N_year + N_rate + CN_lrr)
 AICc(mm0, mm1, mm2, mm3, mm4, mm5)
-summary(mm3)
+summary(mm2)
 
-mm6 <- rma.mv(yi, vi, data = rom, mod = ~ CN_cnt + N_year)
-mm7 <- rma.mv(yi, vi, data = rom, mod = ~ CN_cnt + CN_lrr)
-mm8 <- rma.mv(yi, vi, data = rom, mod = ~ N_year + CN_lrr)
-AICc(mm3, mm6, mm7, mm8)
-summary(mm6)
+mm6 <- rma.mv(yi, vi, data = rom, mod = ~          N_year + N_rate)
+mm7 <- rma.mv(yi, vi, data = rom, mod = ~ CN_cnt          + N_rate)
+mm8 <- rma.mv(yi, vi, data = rom, mod = ~ CN_cnt + N_year)
+AICc(mm0, mm2, mm6, mm7, mm8)
+summary(mm8)
 
 mm9  <- rma.mv(yi, vi, data = rom, mod = ~ N_year)
 mm10 <- rma.mv(yi, vi, data = rom, mod = ~ CN_cnt)
-AICc(mm6, mm9, mm10)
+AICc(mm0, mm8, mm9, mm10)
 summary(mm10)
 
 # . CN_cnt, N_added, CN_lrr 
@@ -183,56 +183,56 @@ summary(mm11)
 mm15 <- rma.mv(yi, vi, data = rom, mod = ~ CN_cnt + N_added)
 mm16 <- rma.mv(yi, vi, data = rom, mod = ~ CN_cnt +           CN_lrr)
 mm17 <- rma.mv(yi, vi, data = rom, mod = ~          N_added + CN_lrr)
-AICc(mm11, mm15, mm16, mm17)
+AICc(mm0, mm11, mm15, mm16, mm17)
 summary(mm11)
+mm11_lm <- lm(yi ~ CN_cnt + N_added + CN_lrr, rom)
+car::vif(mm11_lm)
 
+#. N_year, CNratio, N_rate
+mm18 <- rma.mv(yi, vi, data = rom, mod = ~ CNratio + N_year + N_rate)
+AICc(mm0, mm18)
+
+mm19 <- rma.mv(yi, vi, data = rom, mod = ~           N_year + N_rate)
+mm20 <- rma.mv(yi, vi, data = rom, mod = ~ CNratio          + N_rate)
+mm21 <- rma.mv(yi, vi, data = rom, mod = ~ CNratio + N_year)
+AICc(mm18, mm19, mm20, mm21)
+
+mm22 <- rma.mv(yi, vi, data = rom, mod = ~ N_year)
+mm23 <- rma.mv(yi, vi, data = rom, mod = ~ CNratio)
+AICc(mm21, mm22, mm23)
+
+
+#. N_added, CNratio
+mm24 <- rma.mv(yi, vi, data = rom, mod = ~ CNratio + N_added)
+mm25 <- rma.mv(yi, vi, data = rom, mod = ~ N_added)
+AICc(mm23, mm24, mm25)
+
+
+# best model
+AICc(mm11, mm10, mm23, mm24)
+summary(mm24)
 
 
 # figure with predicted values
-range(rom$CN_cnt)
-mm10_pred_cnc <- predict(mm10, seq(16, 48, length.out = 100), addx = TRUE) %>% 
-  data.frame(.) %>%
-  rename(yi = pred,
-         CN_cnt = X.CN_cnt)
-
-mm10_CNcntrl_p <- ggplot(rom, aes(x = CN_cnt, y = yi))+
-  geom_hline(yintercept = 0, col = "gray30", linetype = "dashed")+
-  geom_point(aes(fill = Biome, size = wi), col = "black", alpha = .7, shape = 21)+
-  geom_line(data = mm10_pred_cnc, col = "blue")+
-  geom_line(data = mm10_pred_cnc, aes(y = ci.lb), col = "blue", linetype = "dotted")+
-  geom_line(data = mm10_pred_cnc, aes(y = ci.ub), col = "blue", linetype = "dotted")+
-  scale_fill_manual(values = c("black", "red"))+
-  scale_size_continuous(range = c(1, 10), guide = "none")+
-  labs(x = "C:N ratio at control", y = "Log RR of lignin:carbohydrate")+
-  theme(legend.position   = c(.2, .85),
-        legend.title      = element_blank(),
-        legend.background = element_blank())
-
-ggsavePP("Output/Figs/metaanalysis_model3", mm10_CNcntrl_p, 6.5, 3.5)
-
-
-# Alternative model
-mm18 <- rma.mv(yi, vi, data = rom, mod = ~ CNratio + N_added)
-mm19 <- rma.mv(yi, vi, data = rom, mod = ~ CNratio)
-mm20 <- rma.mv(yi, vi, data = rom, mod = ~ N_added)
-AICc(mm10, mm18, mm19, mm20)
 range(rom$CNratio)
 range(rom$N_added)
-mm18_pred_cnr <- predict(mm18, cbind(seq(18, 49, length.out = 100), mean(rom$N_added)), addx = TRUE) %>% 
+mm24_pred_cn <- predict(mm24, cbind(seq(18, 49, length.out = 100), mean(rom$N_added)), addx = TRUE) %>% 
   data.frame(.) %>%
-  rename(yi      = pred,
-         CNratio = X.CNratio)
-mm18_pred_nad <- predict(mm18, cbind(mean(rom$CNratio), seq(48, 2000, length.out = 100)), addx = TRUE) %>% 
+  rename(yi = pred,
+         CNratio = X.CNratio,
+         N_added = X.N_added)
+mm24_pred_an <- predict(mm24, cbind(mean(rom$CNratio), seq(48, 2000, length.out = 100)), addx = TRUE) %>% 
   data.frame(.) %>%
-  rename(yi      = pred,
+  rename(yi = pred,
+         CNratio = X.CNratio,
          N_added = X.N_added)
 
-mm18_cnr_p <- ggplot(rom, aes(x = CNratio, y = yi))+
+mm24_CN_p <- ggplot(rom, aes(x = CNratio, y = yi))+
   geom_hline(yintercept = 0, col = "gray30", linetype = "dashed")+
   geom_point(aes(fill = Biome, size = wi), col = "black", alpha = .7, shape = 21)+
-  geom_line(data = mm18_pred_cnr, col = "blue")+
-  geom_line(data = mm18_pred_cnr, aes(y = ci.lb), col = "blue", linetype = "dotted")+
-  geom_line(data = mm18_pred_cnr, aes(y = ci.ub), col = "blue", linetype = "dotted")+
+  geom_line(data = mm24_pred_cn, col = "blue")+
+  geom_line(data = mm24_pred_cn, aes(y = ci.lb), col = "blue", linetype = "dotted")+
+  geom_line(data = mm24_pred_cn, aes(y = ci.ub), col = "blue", linetype = "dotted")+
   scale_fill_manual(values = c("black", "red"))+
   scale_size_continuous(range = c(1, 10), guide = "none")+
   labs(x = "C:N ratio", y = "Log RR of lignin:carbohydrate")+
@@ -240,45 +240,109 @@ mm18_cnr_p <- ggplot(rom, aes(x = CNratio, y = yi))+
         legend.title      = element_blank(),
         legend.background = element_blank())
 
-mm18_nad_p <- ggplot(rom, aes(x = N_added, y = yi))+
+mm24_an_p <- ggplot(rom, aes(x = N_added, y = yi))+
   geom_hline(yintercept = 0, col = "gray30", linetype = "dashed")+
   geom_point(aes(fill = Biome, size = wi), col = "black", alpha = .7, shape = 21)+
-  geom_line(data = mm18_pred_nad, col = "blue")+
-  geom_line(data = mm18_pred_nad, aes(y = ci.lb), col = "blue", linetype = "dotted")+
-  geom_line(data = mm18_pred_nad, aes(y = ci.ub), col = "blue", linetype = "dotted")+
+  geom_line(data = mm24_pred_an, col = "blue")+
+  geom_line(data = mm24_pred_an, aes(y = ci.lb), col = "blue", linetype = "dotted")+
+  geom_line(data = mm24_pred_an, aes(y = ci.ub), col = "blue", linetype = "dotted")+
   scale_fill_manual(values = c("black", "red"))+
   scale_size_continuous(range = c(1, 10), guide = "none")+
-  theme(legend.position = "none")+
-  labs(x = "Total added N (kg ha-1)", y = NULL)
+  labs(x = "Total added N (kg ha-1)", y = "Log RR of lignin:carbohydrate")+
+  theme(legend.position   = c(.2, .85),
+        legend.title      = element_blank(),
+        legend.background = element_blank())
 
-mm18_p <- cbind(ggplotGrob(mm18_cnr_p), 
-                ggplotGrob(mm18_nad_p))  
+mm24_p <- cbind(ggplotGrob(mm24_CN_p), 
+                ggplotGrob(mm24_an_p))  
 # grid.newpage()
-# grid.draw(mm18_p)
-ggsavePP("Output/Figs/metaanalysis_model4", mm18_p, 6.5, 3.5)
+# grid.draw(mm24_p)
+ggsavePP("Output/Figs/metaanalysis_model5", mm24_p, 6.5, 3.5)
 
 
 
 
 # without random factor + Biome ---------------------------------------------------
 
+ggplot(rom, aes(x = log(N_added), y = yi, col = Biome))+
+  geom_point()+
+  geom_smooth(method = "lm")
+ggplot(rom, aes(x = N_added, y = yi, col = Biome))+
+  geom_point()+
+  geom_smooth(method = "lm")
+ggplot(rom, aes(x = N_added, y = yi, col = Vegetation))+
+  facet_grid(. ~ Biome)+
+  geom_point()+
+  geom_smooth(method = "lm", se = FALSE)
+
+ggplot(rom, aes(x = N_rate, y = yi, col = Vegetation))+
+  facet_grid(. ~ Biome)+
+  geom_point()+
+  geom_smooth(method = "lm", se = FALSE)
+ggplot(rom, aes(x = N_year, y = yi, col = Biome))+
+  geom_point()+
+  geom_smooth(method = "lm")
+ggplot(rom, aes(x = log(N_year), y = yi, col = Biome))+
+  geom_point()+
+  geom_smooth(method = "lm")
+ggplot(rom, aes(x = CN_lrr, y = yi, col = Biome))+
+  geom_point()+
+  geom_smooth(method = "lm")
+ggplot(rom, aes(x = MAT, y = yi, col = Biome))+
+  geom_point()+
+  geom_smooth(method = "lm")
+
+names(rom)
+boxplot(CN_cnt ~ Biome, rom)
+boxplot(N_deposition ~ Biome, rom)
+boxplot(N_rate ~ Biome, rom)
+boxplot(N_year ~ Biome, rom)
+boxplot(N_added ~ Biome, rom)
+boxplot(CN_lrr ~ Biome, rom)
+
 
 mb0 <- rma.mv(yi, vi, data = rom)
 
 # . CN_cnt, N_year, N_rate, CN_lrr 
-mb1 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_year + N_rate)
-mb2 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_year         )
-mb3 <- rma.mv(yi, vi, data = rom, mod = ~         N_year + N_rate)
-mb4 <- rma.mv(yi, vi, data = rom, mod = ~ Biome          + N_rate)
-mb5 <- rma.mv(yi, vi, data = rom, mod = ~ Biome          + N_rate)
-AICc(mb0, mb1, mb2, mb3, mb4, mb5)
-summary(mb2)
+mb1 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_year + N_rate + CN_lrr + CN_cnt)
+AICc(mb0, mb1)
+mb2 <- rma.mv(yi, vi, data = rom, mod = ~ Biome          + N_rate + CN_lrr + CN_cnt)
+mb3 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_year          + CN_lrr + CN_cnt)
+mb4 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_year + N_rate          + CN_cnt)
+mb5 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_year + N_rate + CN_lrr)
+AICc(mb0, mb2, mb3, mb4, mb5)
 
-mb6 <- rma.mv(yi, vi, data = rom, mod = ~ Biome)
-mb7 <- rma.mv(yi, vi, data = rom, mod = ~ N_year)
-AICc(mb2, mb6, mb7)
-summary(mb6)
+mb6 <- rma.mv(yi, vi, data = rom, mod = ~ Biome          + N_rate + CN_lrr)
+mb7 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_year          + CN_lrr)
+mb8 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_year + N_rate)
+AICc(mb0, mb6, mb7, mb8)
 
+mb9  <- rma.mv(yi, vi, data = rom, mod = ~ Biome          + N_rate)
+mb10 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_year)
+AICc(mb0, mb9, mb10)
+
+mb11 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_added + I(N_added^2))
+mb12 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_added)
+mb13 <- rma.mv(yi, vi, data = rom, mod = ~         N_added + I(N_added^2))
+AICc(mb11, mb12, mb13)
+
+
+mb11 <- rma.mv(yi, vi, data = rom, mod = ~ Biome)
+
+# without Flakaliden
+rom_noFl <- filter(rom, Site != "Flakaliden")
+mf0 <- rma.mv(yi, vi, data = rom_noFl, mod = ~ Biome + N_year + N_rate)
+mf1 <- rma.mv(yi, vi, data = rom_noFl, mod = ~ Biome + N_year)
+mf2 <- rma.mv(yi, vi, data = rom_noFl, mod = ~ Biome          +  N_rate)
+mf3 <- rma.mv(yi, vi, data = rom_noFl, mod = ~         N_year + N_rate)
+AICc(mf0, mf1, mf2, mf3)
+mf4 <- rma.mv(yi, vi, data = rom_noFl, mod = ~ Biome)
+mf5 <- rma.mv(yi, vi, data = rom_noFl, mod = ~ N_year)
+AICc(mf0, mf1, mf4, mf5)
+summary(mf4)
+
+ma1 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_rate)
+summary(ma1)
 
 # # figure with predicted values
 # range(rom$N_year)
@@ -403,7 +467,7 @@ with(res_nrt_cfd, forest(x = estimate, sei = se, slab= f_nrt,
 
 plot(yi ~ f_nad, rom)
 rom %>% 
-  select(Site, Trt, f_nad) %>% 
+  select(Site, TrtID, f_nad) %>% 
   distinct() %>% 
   arrange(f_nad)
 res_nad <- rma.mv(yi, vi, data = rom, mods = ~ f_nad - 1, random = ~ 1|Site)
@@ -466,22 +530,48 @@ with(res_cnr_cfd, forest(x = estimate, sei = se, slab= f_cnr    , ilab=paste0("(
 with(res_rcn_cfd, forest(x = estimate, sei = se, slab= f_rcn    , ilab=paste0("(", N ,")"), ilab.xpos=-.6, top = 1, cex = .7, main = "By log response ratio of CN"))
 dev.off()
 
+pdf(file = "Output/Figs/Forestplot_byBiome.pdf", width = 5, height = 2)
+par(mar = c(4, 4, 2, 3))
+with(res_bm_cfd, forest(x = estimate, sei = se, slab= Biome     , ilab=paste0("(", N ,")"), ilab.xpos=-.3, top = 1, cex = .7, main = NULL))
+dev.off()
 
+pdf(file = "Output/Figs/Forestplot_bySite.pdf", width = 5, height = 4)
+forest(res, main = "Lignin:Carbohrate", cex = .7, top = 1)
+dev.off()
 
 # Subset analysis ---------------------------------------------------------
 
-bmr1  <- rma.mv(yi, vi, data = rom, mod = ~ N_added + CN_lrr,         random = ~1|Site, subset = Biome == "Boreal")
+bmr1  <- rma.mv(yi, vi, data = rom, mod = ~ N_added + CN_lrr,        random = ~1|Site, subset = Biome == "Boreal")
 bmr2  <- rma.mv(yi, vi, data = rom, mod = ~ N_added,                 random = ~1|Site, subset = Biome == "Boreal")
-bmr3  <- rma.mv(yi, vi, data = rom, mod = ~ CN_lrr,                   random = ~1|Site, subset = Biome == "Boreal")
+bmr3  <- rma.mv(yi, vi, data = rom, mod = ~ CN_lrr,                  random = ~1|Site, subset = Biome == "Boreal")
 bmr4  <- rma.mv(yi, vi, data = rom,                                  random = ~1|Site, subset = Biome == "Boreal")
-bmr5  <- rma.mv(yi, vi, data = rom, mod = ~ N_year + N_rate + CN_lrr, random = ~1|Site, subset = Biome == "Boreal")
-bmr6  <- rma.mv(yi, vi, data = rom, mod = ~ N_rate + CN_lrr,          random = ~1|Site, subset = Biome == "Boreal")
-bmr7  <- rma.mv(yi, vi, data = rom, mod = ~ N_year + CN_lrr,          random = ~1|Site, subset = Biome == "Boreal")
+bmr5  <- rma.mv(yi, vi, data = rom, mod = ~ N_year + N_rate + CN_lrr,random = ~1|Site, subset = Biome == "Boreal")
+bmr6  <- rma.mv(yi, vi, data = rom, mod = ~ N_rate + CN_lrr,         random = ~1|Site, subset = Biome == "Boreal")
+bmr7  <- rma.mv(yi, vi, data = rom, mod = ~ N_year + CN_lrr,         random = ~1|Site, subset = Biome == "Boreal")
 bmr8  <- rma.mv(yi, vi, data = rom, mod = ~ N_year + N_rate,         random = ~1|Site, subset = Biome == "Boreal")
 bmr9  <- rma.mv(yi, vi, data = rom, mod = ~ N_year,                  random = ~1|Site, subset = Biome == "Boreal")
 bmr10 <- rma.mv(yi, vi, data = rom, mod = ~ N_rate,                  random = ~1|Site, subset = Biome == "Boreal")
 bmr11 <- rma.mv(yi, vi, data = rom, mod = ~ CN_cnt,                random = ~1|Site, subset = Biome == "Boreal")
 AICc(bmr1, bmr2, bmr3, bmr4, bmr5, bmr6, bmr7, bmr8, bmr9, bmr10, bmr11)
+
+bm0 <- rma.mv(yi, vi, data = rom, mod = ~ 1, subset = Biome == "Boreal")
+bm1 <- rma.mv(yi, vi, data = rom, mod = ~ N_year + N_rate + CN_lrr + CNratio, subset = Biome == "Boreal")
+bm2 <- rma.mv(yi, vi, data = rom, mod = ~          N_rate + CN_lrr + CNratio, subset = Biome == "Boreal")
+bm3 <- rma.mv(yi, vi, data = rom, mod = ~ N_year          + CN_lrr + CNratio, subset = Biome == "Boreal")
+bm4 <- rma.mv(yi, vi, data = rom, mod = ~ N_year + N_rate          + CNratio, subset = Biome == "Boreal")
+bm5 <- rma.mv(yi, vi, data = rom, mod = ~ N_year + N_rate + CN_lrr          , subset = Biome == "Boreal")
+AICc(bm0, bm1, bm2, bm3, bm4, bm5)
+
+bm6 <- rma.mv(yi, vi, data = rom, mod = ~                   CN_lrr + CNratio, subset = Biome == "Boreal")
+bm7 <- rma.mv(yi, vi, data = rom, mod = ~ N_year                   + CNratio, subset = Biome == "Boreal")
+bm8 <- rma.mv(yi, vi, data = rom, mod = ~ N_year          + CN_lrr          , subset = Biome == "Boreal")
+AICc(bm0, bm3, bm6, bm7, bm8)
+
+bm9 <- rma.mv(yi, vi, data = rom, mod = ~ CNratio, subset = Biome == "Boreal")
+bm10 <- rma.mv(yi, vi, data = rom, mod = ~ N_year, subset = Biome == "Boreal")
+AICc(bm0, bm7, bm9, bm10)
+
+
 
 
 tmr1  <- rma.mv(yi, vi, data = rom, mod = ~ N_added + CN_lrr,         subset = Biome == "Temperate")
@@ -494,8 +584,8 @@ tmr7  <- rma.mv(yi, vi, data = rom, mod = ~ N_year + CN_lrr,          subset = B
 tmr8  <- rma.mv(yi, vi, data = rom, mod = ~ N_year + N_rate,         subset = Biome == "Temperate")
 tmr9  <- rma.mv(yi, vi, data = rom, mod = ~ N_year,                  subset = Biome == "Temperate")
 tmr10 <- rma.mv(yi, vi, data = rom, mod = ~ N_rate,                  subset = Biome == "Temperate")
-tmr11 <- rma.mv(yi, vi, data = rom, mod = ~ CN_cnt,                subset = Biome == "Temperate")
 AICc(tmr1, tmr2, tmr3, tmr4, tmr5, tmr6, tmr7, tmr8, tmr9, tmr10, tmr11)
+tmr11 <- rma.mv(yi, vi, data = rom, mod = ~ CN_cnt,                subset = Biome == "Temperate")
 
 
 rom_us <- filter(rom, Biome == "Temperate")
