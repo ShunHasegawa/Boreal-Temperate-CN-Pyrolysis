@@ -149,7 +149,22 @@ summary(mr5)
 
 
 
-# without random factor ---------------------------------------------------
+# w/i random factor and biome ---------------------------------------------
+mrb0 <- rma.mv(yi, vi, data = rom, random = ~1|Site)
+mrb1 <- rma.mv(yi, vi, data = rom, mod = ~ Biome          , random = ~1|Site)
+mrb2 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_added, random = ~1|Site)
+mrb3 <- rma.mv(yi, vi, data = rom, mod = ~         N_added, random = ~1|Site)
+mrb4 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_rate + N_year, random = ~1|Site)
+mrb5 <- rma.mv(yi, vi, data = rom, mod = ~ Biome +          N_year, random = ~1|Site)
+mrb6 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_rate         , random = ~1|Site)
+AICc(mrb0, mrb1, mrb2, mrb3, mrb4, mrb5, mrb6)
+summary(mrb1)
+model_performance(mrb1)
+
+
+
+
+# w/o random factor ---------------------------------------------------
 mm0 <- rma.mv(yi, vi, data = rom)
 
 # . CN_cnt, N_year, N_rate, CN_lrr 
@@ -262,7 +277,7 @@ ggsavePP("Output/Figs/metaanalysis_model5", mm24_p, 6.5, 3.5)
 
 
 
-# without random factor + Biome ---------------------------------------------------
+# w/o random factor + Biome ---------------------------------------------------
 
 ggplot(rom, aes(x = log(N_added), y = yi, col = Biome))+
   geom_point()+
@@ -319,17 +334,24 @@ AICc(mb0, mb6, mb7, mb8)
 
 mb9  <- rma.mv(yi, vi, data = rom, mod = ~ Biome          + N_rate)
 mb10 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_year)
-AICc(mb0, mb9, mb10)
-
-mb11 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_added + I(N_added^2))
-mb12 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_added)
-mb13 <- rma.mv(yi, vi, data = rom, mod = ~         N_added + I(N_added^2))
-AICc(mb11, mb12, mb13)
-
+AICc(mb0, mb8, mb9, mb10)
+summary(mb10)
 
 mb11 <- rma.mv(yi, vi, data = rom, mod = ~ Biome)
+mb12 <- rma.mv(yi, vi, data = rom, mod = ~ N_year)
+AICc(mb0, mb10, mb11, mb12)
+summary(mb11)
 
-# without Flakaliden
+
+mb13 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_added + I(N_added^2))
+mb14 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_added)
+mb15 <- rma.mv(yi, vi, data = rom, mod = ~         N_added + I(N_added^2))
+AICc(mb13, mb14, mb15)
+summary(mb13)
+
+
+
+# w/o Flakaliden
 rom_noFl <- filter(rom, Site != "Flakaliden")
 mf0 <- rma.mv(yi, vi, data = rom_noFl, mod = ~ Biome + N_year + N_rate)
 mf1 <- rma.mv(yi, vi, data = rom_noFl, mod = ~ Biome + N_year)
@@ -340,6 +362,22 @@ mf4 <- rma.mv(yi, vi, data = rom_noFl, mod = ~ Biome)
 mf5 <- rma.mv(yi, vi, data = rom_noFl, mod = ~ N_year)
 AICc(mf0, mf1, mf4, mf5)
 summary(mf4)
+
+# w/o Rosinedal
+rom_noRo <- filter(rom, Site != "Rosinedal")
+m_woR0 <- rma.mv(yi, vi, data = rom_noRo, mod = ~ Biome + N_year + N_rate)
+m_woR1 <- rma.mv(yi, vi, data = rom_noRo, mod = ~ Biome + N_year)
+m_woR2 <- rma.mv(yi, vi, data = rom_noRo, mod = ~ Biome          +  N_rate)
+m_woR3 <- rma.mv(yi, vi, data = rom_noRo, mod = ~         N_year + N_rate)
+AICc(m_woR0, m_woR1, m_woR2, m_woR3)
+m_woR4 <- rma.mv(yi, vi, data = rom_noRo, mod = ~ Biome)
+m_woR5 <- rma.mv(yi, vi, data = rom_noRo, mod = ~ N_year)
+m_woR6 <- rma.mv(yi, vi, data = rom_noRo, mod = ~ Biome + N_added)
+m_woR7 <- rma.mv(yi, vi, data = rom_noRo, mod = ~ N_added)
+AICc(m_woR0, m_woR1, m_woR4, m_woR5, m_woR6, m_woR7)
+summary(m_woR4)
+
+
 
 ma1 <- rma.mv(yi, vi, data = rom, mod = ~ Biome + N_rate)
 summary(ma1)
