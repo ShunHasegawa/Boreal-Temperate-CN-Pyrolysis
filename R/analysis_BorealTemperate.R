@@ -254,6 +254,40 @@ bt_lc_p <- ggplot(spect_tb_d, aes(x = TrtID, y = lcratio))+
   labs(x = NULL, y = "Lignin:Carbohydrate ratio")
 ggsavePP("Output/Figs/bt_LC_ratio", bt_lc_p, 6.5, 3)
 
+# Fig for NIBIO Interview
+spect_tb_d$TrtID
+spect_tb_d_trt <- spect_tb_d %>% 
+  filter(!(TrtID %in% c("Aheden_N3kg", "Aheden_N6kg", "Aheden_N12kg", "Svartberget_N1"))) %>% 
+  droplevels() %>% 
+  select(Site, Site_name, lcratio, Treatment, TrtID, Biome) %>% 
+  mutate(Site_name = factor(Site_name, levels = c("Aheden", "Flakaliden", "Rosinedal", "RosinedalOF", "Svartberget",
+                                                  "Cary_Institute", "Fernow_Forest", "Harvard_Forest", "Bear_Brook_Watershed", "Bartlett_Forest")))
+
+# sitecols <- c("#e41a1c", "#377eb8", "#4daf4a", "#cab2d6", "#984ea3", "#ff7f00", "#999914", "#a65628", "#f781bf", "#999999")
+
+fillcols <- c("white", "#f7b8b8",
+              "white", "#a7c9e5",
+              "white", "#b7e0b6",
+              "white", "#dccce4",
+              "white", "#d6b3db",
+              "white", "#ffce9d",
+              "white", "#f3f3a5",
+              "white", "#eac0a8",
+              "white", "#f9a6d2",
+              "white", "#dedede")
+
+bt_lc_p_v2 <- ggplot(spect_tb_d_trt, aes(x = Site_name, y = lcratio))+
+  geom_boxplot(aes(col = Site_name, fill = TrtID), outlier.colour = "white", size = .3)+
+  geom_point(aes(col = Site_name, group = TrtID), alpha = .5, position = position_jitterdodge())+
+  scale_color_manual(values = sitecols)+
+  scale_fill_manual(values = fillcols)+
+  facet_grid(. ~ Biome, scales = "free_x", space = "free_x")+
+  theme(axis.text.x     = element_text(angle = 45, hjust = 1, size = 10),
+        legend.position = "none")+
+  labs(x = NULL, y = "Lignin:Carbohydrate ratio")
+ggsavePP("Output/Figs/NIBIO/LCratioByTrt", bt_lc_p_v2, width = 6.5, height = 4)
+
+
 # N compound
 bt_ncmp_p <- ggplot(spect_tb_d, aes(x = TrtID, y = N_comp * 100))+
   geom_boxplot(aes(col = Site), outlier.colour = "white", size = .3)+
