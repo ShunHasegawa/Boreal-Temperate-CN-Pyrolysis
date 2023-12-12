@@ -78,7 +78,7 @@ RosinedalOF_env2020 <- read.csv("Data/Pyrolysis_sample_list_RosinedalOF2020.csv"
          Treatment = mapvalues(treatment, c("FC", "IN"), c("Control", "Fertilised")),
          TrtID     = paste(Site, Treatment, sep = "_")) %>% 
   select(fileid, Site, Horizon, Treatment, TrtID, wN, wC, d15N, d13C)
-some(trt_br_d)
+some(RosinedalOF_env2020)
 
 # The other sites from the boreal forests (Åheden, Svartberget, Flakaliden)
 load("Data/IRMS.RData") 

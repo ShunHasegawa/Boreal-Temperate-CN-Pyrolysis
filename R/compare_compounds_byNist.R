@@ -34,4 +34,4 @@ merged_comp %>%
   apply(., 2, function(x) sum(x != ""))
 
 # save
-write.csv(merged_comp, "Output/Tables/Compare_NIST_addigned_compds.csv", row.names = FALSE)
+write.csv(merged_comp, "Output/Tables/Compare_NIST_assigned_compds.csv", row.names = FALSE)
