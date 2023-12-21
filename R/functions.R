@@ -114,3 +114,10 @@ rda_bybiome <- function(x, ylimad = 1.08){
   return(list(model = d_rda, fig = rda_p))
   
 }
+
+
+
+
+# Convert LRR to % --------------------------------------------------------
+lrr2perc <- function(x) (exp(x) - 1) * 100
+

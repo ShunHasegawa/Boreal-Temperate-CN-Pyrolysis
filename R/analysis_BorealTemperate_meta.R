@@ -80,7 +80,7 @@ rom <- escalc(measure = "MD", # Means are log-scale. so use mean-difference (MD)
 mt0 <- rma.mv(yi, vi, random = ~ 1|Site, data = rom)
 summary(mt0)
 forest(mt0, slab = TrtID, main = "log(Lignin:Carbohrate)", cex = .7)
-coef(mt0)
+lrr2perc(coef(mt0))
 
 
 
@@ -94,6 +94,7 @@ bio_d <- coef(summary(mt_bio)) %>%
   mutate(type = "Biome",
          grp = levels(factor(rom$Biome)),
          size = bio_N$N)
+lrr2perc(coef(mt_bio))
 
 # .  N added period -------------------------------------------------------
 mt_nyr <- rma.mv(yi, vi, mod = ~ f_nyr - 1, random = ~ 1|Site, data = rom)
